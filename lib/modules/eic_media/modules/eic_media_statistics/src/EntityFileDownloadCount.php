@@ -180,7 +180,7 @@ class EntityFileDownloadCount {
           }
 
           // Get statistics results for all files.
-          $stat_results = $this->fileStatisticsDbStorage->fetchViews($file_ids);
+          $stat_results = $file_ids ? $this->fileStatisticsDbStorage->fetchViews($file_ids) : [];
           foreach ($stat_results as $stat_result) {
             /** @var \Drupal\statistics\StatisticsViewsResult $stat_result */
             $file_downloads_count += $stat_result->getTotalCount();

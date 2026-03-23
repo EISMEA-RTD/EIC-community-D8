@@ -1,3 +1,6 @@
+options:
+  uri: https://ddc.europa.eu
+
 drush:
   paths:
     config:

@@ -10,6 +10,7 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Drupal\user\Entity\User;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -70,7 +71,7 @@ class MediaFileDownloadController extends DownloadController {
   /**
    * {@inheritdoc}
    */
-  public function download(MediaInterface $media) {
+  public function download(MediaInterface $media): BinaryFileResponse {
     $response = parent::download($media);
 
     $source = $media->getSource();

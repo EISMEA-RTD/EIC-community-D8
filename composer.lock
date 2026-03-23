@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e75215904ff83a5d63642d0e2987ddf8",
+    "content-hash": "07e4b8c9f8f7439c1948ed96100a8845",
     "packages": [
         {
             "name": "amsul/pickadate_js",
@@ -3996,6 +3996,61 @@
             }
         },
         {
+            "name": "drupal/datetime_range_timezone",
+            "version": "1.0.0-alpha5",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/datetime_range_timezone.git",
+                "reference": "8.x-1.0-alpha5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/datetime_range_timezone-8.x-1.0-alpha5.zip",
+                "reference": "8.x-1.0-alpha5",
+                "shasum": "54ef45a89ba73bfb41182232d8e436282d10477a"
+            },
+            "require": {
+                "drupal/core": "^10.1 || ^11"
+            },
+            "require-dev": {
+                "drupal/token": "^1.10"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "8.x-1.0-alpha5",
+                    "datestamp": "1739987868",
+                    "security-coverage": {
+                        "status": "not-covered",
+                        "message": "Alpha releases are not covered by Drupal security advisories."
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0+"
+            ],
+            "authors": [
+                {
+                    "name": "benjy",
+                    "homepage": "https://www.drupal.org/user/1852732"
+                },
+                {
+                    "name": "joevagyok",
+                    "homepage": "https://www.drupal.org/user/2876343"
+                },
+                {
+                    "name": "sam152",
+                    "homepage": "https://www.drupal.org/user/1485048"
+                }
+            ],
+            "description": "Datetime Range Timezone",
+            "homepage": "https://www.drupal.org/project/datetime_range_timezone",
+            "support": {
+                "source": "https://git.drupalcode.org/project/datetime_range_timezone"
+            }
+        },
+        {
             "name": "drupal/embed",
             "version": "1.10.0",
             "source": {
@@ -5562,6 +5617,132 @@
             "homepage": "https://www.drupal.org/project/js_cookie",
             "support": {
                 "source": "https://git.drupalcode.org/project/js_cookie"
+            }
+        },
+        {
+            "name": "drupal/json_field",
+            "version": "1.7.0",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/json_field.git",
+                "reference": "8.x-1.7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/json_field-8.x-1.7.zip",
+                "reference": "8.x-1.7",
+                "shasum": "4243b6adc2dd9d44a8a243cede59f7935a0c9b65"
+            },
+            "require": {
+                "drupal/core": "^10.3 || ^11",
+                "ext-json": "*"
+            },
+            "require-dev": {
+                "drupal/diff": "^1",
+                "drupal/feeds": "dev-3.x@dev",
+                "swaggest/json-schema": "^0"
+            },
+            "suggest": {
+                "drupal/diff": "^0",
+                "swaggest/json-schema": "^0"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "8.x-1.7",
+                    "datestamp": "1759661334",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "See contributors",
+                    "homepage": "https://www.drupal.org/node/2653746/committers",
+                    "role": "Developer"
+                },
+                {
+                    "name": "dawehner",
+                    "homepage": "https://www.drupal.org/user/99340"
+                },
+                {
+                    "name": "Jaesin",
+                    "homepage": "https://www.drupal.org/user/841054"
+                }
+            ],
+            "description": "Provides a JSON field, formatter and views integration",
+            "homepage": "https://www.drupal.org/project/json_field",
+            "keywords": [
+                "Drupal"
+            ],
+            "support": {
+                "source": "http://cgit.drupalcode.org/json_field",
+                "issues": "https://www.drupal.org/project/issues/json_field"
+            }
+        },
+        {
+            "name": "drupal/linkit",
+            "version": "6.1.7",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/linkit.git",
+                "reference": "6.1.7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/linkit-6.1.7.zip",
+                "reference": "6.1.7",
+                "shasum": "15bb27596fa076b0afbbe3e3a7587c1ee69ded9f"
+            },
+            "require": {
+                "drupal/core": "^10.1"
+            },
+            "require-dev": {
+                "drupal/ckeditor": "*",
+                "drupal/imce": "*"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "6.1.7",
+                    "datestamp": "1752532708",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Emil Stjerneman",
+                    "homepage": "https://stjerneman.com",
+                    "email": "emil@stjerneman.com",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "johnwebdev",
+                    "homepage": "https://www.drupal.org/user/3331569"
+                },
+                {
+                    "name": "mark_fullmer",
+                    "homepage": "https://www.drupal.org/user/2612816"
+                }
+            ],
+            "description": "Linkit - Enriched linking experience",
+            "homepage": "http://drupal.org/project/linkit",
+            "support": {
+                "source": "http://cgit.drupalcode.org/linkit",
+                "issues": "http://drupal.org/project/linkit"
             }
         },
         {
@@ -11674,6 +11855,117 @@
             "time": "2025-04-09T15:32:03+00:00"
         },
         {
+            "name": "openeuropa/oe_content",
+            "version": "3.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/openeuropa/oe_content.git",
+                "reference": "1ffa7288770d77251ee98f7165db8120eff0f319"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/openeuropa/oe_content/zipball/1ffa7288770d77251ee98f7165db8120eff0f319",
+                "reference": "1ffa7288770d77251ee98f7165db8120eff0f319",
+                "shasum": ""
+            },
+            "require": {
+                "cweagans/composer-patches": "^1.7 | ^2.0",
+                "drupal/core": "^10",
+                "drupal/datetime_range_timezone": "^1.0.0-alpha3",
+                "drupal/linkit": "^6.0.0-beta4",
+                "drupal/maxlength": "^2.0.1",
+                "openeuropa/oe_media": "^1.23.1",
+                "openeuropa/rdf_skos": "^1.0.0-alpha10",
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "behat/mink-selenium2-driver": "1.6.0",
+                "composer/installers": "^1.5",
+                "drupal/address": "^1.11",
+                "drupal/ckeditor": "^1.0",
+                "drupal/composite_reference": "^2.2",
+                "drupal/config_devel": "^1.9",
+                "drupal/core-composer-scaffold": "^10",
+                "drupal/datetime_testing": "^1.0",
+                "drupal/description_list_field": "^1.0.0-alpha5",
+                "drupal/drupal-extension": "^5.0",
+                "drupal/entity_browser": "^2.10",
+                "drupal/entity_reference_revisions": "^1.8",
+                "drupal/field_group": "~3.2",
+                "drupal/inline_entity_form": "^1.0-rc15",
+                "drupal/token": "^1.10",
+                "drupal/typed_link": "2.0.1",
+                "drush/drush": "^12.4",
+                "friends-of-behat/service-container-extension": "^1.0",
+                "mikey179/vfsstream": "^1.6",
+                "openeuropa/behat-transformation-context": "~0.2",
+                "openeuropa/code-review": "^2.0",
+                "openeuropa/oe_corporate_countries": "^2.0.0-alpha6",
+                "openeuropa/oe_corporate_site_info": "^1.0",
+                "openeuropa/oe_link_lists": "~0.21",
+                "openeuropa/oe_multilingual": "^1.18",
+                "openeuropa/oe_time_caching": "^1.5",
+                "openeuropa/task-runner-drupal-project-symlink": "^1.0.0-beta6",
+                "openeuropa/task-runner-ensure-behat-batching": "^1.0",
+                "phpspec/prophecy-phpunit": "^2",
+                "symfony/phpunit-bridge": "^6.0"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "_readme": [
+                    "Explicit requirement of symfony/phpunit-bridge to replace drupal/core-dev testing classes and traits.",
+                    "Explicit requirement of behat/mink-selenium2-driver v1.6.0 to ensure dragTo() keeps working in tests."
+                ],
+                "patches": {
+                    "drupal/core": {
+                        "Drupal 10.2.x only - see oe_content/README.md for 10.1.x - https://www.drupal.org/project/drupal/issues/2230909": "https://www.drupal.org/files/issues/2023-12-21/2230909-309.patch"
+                    },
+                    "drupal/field_group": {
+                        "https://www.drupal.org/project/field_group/issues/2787179": "https://www.drupal.org/files/issues/2023-04-07/2787179-highlight-html5-validation-85.patch"
+                    },
+                    "drupal/entity_browser": {
+                        "https://www.drupal.org/project/entity_browser/issues/2851580": "https://www.drupal.org/files/issues/2023-12-12/2851580-117.patch"
+                    }
+                },
+                "drupal-scaffold": {
+                    "locations": {
+                        "web-root": "./build"
+                    }
+                },
+                "enable-patching": true,
+                "installer-paths": {
+                    "build/core": [
+                        "type:drupal-core"
+                    ],
+                    "build/themes/contrib/{$name}": [
+                        "type:drupal-theme"
+                    ],
+                    "build/modules/contrib/{$name}": [
+                        "type:drupal-module"
+                    ],
+                    "build/profiles/contrib/{$name}": [
+                        "type:drupal-profile"
+                    ]
+                },
+                "composer-exit-on-patch-failure": true
+            },
+            "autoload": {
+                "psr-4": {
+                    "Drupal\\oe_content\\": "./src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "EUPL-1.2"
+            ],
+            "description": "OpenEuropa Drupal module that contains the EC corporate entity types.",
+            "support": {
+                "issues": "https://github.com/openeuropa/oe_content/issues",
+                "source": "https://github.com/openeuropa/oe_content/tree/3.1.1"
+            },
+            "time": "2024-02-09T15:51:21+00:00"
+        },
+        {
             "name": "openeuropa/oe_corporate_blocks",
             "version": "5.0.0-beta5",
             "source": {
@@ -11895,6 +12187,95 @@
                 "source": "https://github.com/openeuropa/oe_media/tree/1.36.0"
             },
             "time": "2026-01-09T15:13:36+00:00"
+        },
+        {
+            "name": "openeuropa/oe_paragraphs",
+            "version": "1.32.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/openeuropa/oe_paragraphs.git",
+                "reference": "b7ee2581dfd81088f4d42b03d708fe601ec52d59"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/openeuropa/oe_paragraphs/zipball/b7ee2581dfd81088f4d42b03d708fe601ec52d59",
+                "reference": "b7ee2581dfd81088f4d42b03d708fe601ec52d59",
+                "shasum": ""
+            },
+            "require": {
+                "cweagans/composer-patches": "^1.7 || ^2.0",
+                "drupal/core": "^10 || ^11",
+                "drupal/paragraphs": "^1.18",
+                "drupal/typed_link": "^2.0",
+                "php": ">=8.3"
+            },
+            "require-dev": {
+                "composer/installers": "^1.5 || ^2.3",
+                "drupal/address": "^1.9 || ^2.0",
+                "drupal/composite_reference": "^2.1",
+                "drupal/config_devel": "^1.9",
+                "drupal/core-composer-scaffold": "^10 || ^11",
+                "drupal/core-dev": "^10 || ^11",
+                "drupal/core-utility": "^10 || ^11",
+                "drupal/description_list_field": "^1.0",
+                "drupal/drupal-extension": "^5.0",
+                "drupal/entity_browser": "^2.15",
+                "drupal/inline_entity_form": "^1.0-rc12 || ^3.0@RC",
+                "drupal/json_field": "^1.1",
+                "drush/drush": "^12 || ^13",
+                "openeuropa/behat-transformation-context": "~0.2",
+                "openeuropa/code-review-drupal": "^1.0.0-alpha",
+                "openeuropa/oe_content": "^4.10.0",
+                "openeuropa/oe_media": "^1.23.1",
+                "openeuropa/oe_webtools": "^1.22",
+                "openeuropa/rdf_skos": "^1.2",
+                "openeuropa/task-runner-drupal-project-symlink": "^1.0"
+            },
+            "suggest": {
+                "openeuropa/oe_media": "Allows usage of paragraphs with different media attached to it."
+            },
+            "type": "drupal-module",
+            "extra": {
+                "patches": {
+                    "drupal/paragraphs": {
+                        "Paragraphs widgets validates fields that are not in the current form display @see https://www.drupal.org/project/paragraphs/issues/2890086": "https://www.drupal.org/files/issues/2024-08-08/respect-display-on-validation-2890086-65.patch"
+                    }
+                },
+                "drupal-scaffold": {
+                    "locations": {
+                        "web-root": "./build"
+                    }
+                },
+                "enable-patching": true,
+                "installer-paths": {
+                    "build/core": [
+                        "type:drupal-core"
+                    ],
+                    "build/themes/contrib/{$name}": [
+                        "type:drupal-theme"
+                    ],
+                    "build/modules/contrib/{$name}": [
+                        "type:drupal-module"
+                    ]
+                },
+                "composer-exit-on-patch-failure": true
+            },
+            "autoload": {
+                "psr-4": {
+                    "Drupal\\oe_paragraphs\\": "./src/",
+                    "Drupal\\Tests\\oe_content\\": "./build/modules/contrib/oe_content/tests/src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "EUPL-1.2"
+            ],
+            "description": "Drupal module providing a collection of Paragraph types based on ECL components.",
+            "support": {
+                "issues": "https://github.com/openeuropa/oe_paragraphs/issues",
+                "source": "https://github.com/openeuropa/oe_paragraphs/tree/1.32.0"
+            },
+            "time": "2025-11-18T10:26:20+00:00"
         },
         {
             "name": "openeuropa/oe_theme",
