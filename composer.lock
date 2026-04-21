@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "07e4b8c9f8f7439c1948ed96100a8845",
+    "content-hash": "e2e08b2d2622d217370c439b1e163ddc",
     "packages": [
         {
             "name": "amsul/pickadate_js",

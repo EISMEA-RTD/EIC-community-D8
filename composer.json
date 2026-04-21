@@ -181,7 +181,10 @@
         },
         "composer-exit-on-patch-failure": true,
         "composer-patches": {
-            "patches-file": "composer.patches.json"
+            "patches-file": "composer.patches.json",
+            "ignore-dependency-patches": [
+                "openeuropa/oe_content"
+            ]
         },
         "drupal-scaffold": {
             "locations": {
@@ -244,7 +247,10 @@
             }
         },
         "drupal-lenient": {
-            "allowed-list": ["drupal/aws_sqs", "drupal/ckeditor_oembed"]
+            "allowed-list": [
+                "drupal/aws_sqs",
+                "drupal/ckeditor_oembed"
+            ]
         }
     },
     "provide": {
