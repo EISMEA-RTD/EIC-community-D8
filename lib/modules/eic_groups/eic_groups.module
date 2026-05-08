@@ -596,6 +596,15 @@ function eic_groups_group_access(EntityInterface $entity, $operation, AccountInt
       break;
 
     case 'delete':
+      // Research institutions are a curated dataset: site admins, RI admins
+      // and group owners must be able to fully delete records (not just
+      // unpublish). Defer to the contrib 'delete group' permission for those
+      // groups so route access is gated by the standard group permission
+      // grid rather than by moderation state.
+      if ($entity->bundle() === 'research_institution') {
+        break;
+      }
+
       // Deny access to delete group if the group is NOT in pending state and
       // the user is NOT a poweruser.
       if ($moderation_state !== GroupsModerationHelper::GROUP_PENDING_STATE) {
