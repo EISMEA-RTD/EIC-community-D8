@@ -153,10 +153,19 @@ class AccountHeaderBlock extends BlockBase implements ContainerFactoryPluginInte
       $build['#user'] = $user;
     }
 
+    // For anonymous visitors the block only renders a Login link whose URL
+    // varies by current path + destination query arg — so the bare `user`
+    // context (per-UID, which forces Cache-Control: private and makes the
+    // whole page Dynamic-Cache UNCACHEABLE) is wrong here. Use a binary
+    // anonymity context instead so anon responses are publicly cacheable.
+    $cache_contexts = $this->currentUser->isAnonymous()
+      ? ['user.roles:authenticated', 'url.path', 'url.query_args:destination']
+      : ['user'];
+
     return [
         '#theme' => 'account_header_block',
         '#cache' => [
-          'contexts' => ['user'],
+          'contexts' => $cache_contexts,
         ],
       ] + $build;
   }
