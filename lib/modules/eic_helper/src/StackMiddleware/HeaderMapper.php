@@ -33,6 +33,18 @@ class HeaderMapper implements HttpKernelInterface {
   ];
 
   /**
+   * Settings key holding hosts whose request scheme must be forced to HTTPS.
+   *
+   * Populated per-environment in settings.php (typically from an env var).
+   * Empty / unset = middleware no-ops, suitable for local HTTP development.
+   *
+   * Workaround for the EC reverse proxy chain reporting X-Forwarded-Proto=http
+   * to the pod despite TLS terminating at CloudFront. Remove once the upstream
+   * proxy forwards viewer scheme correctly.
+   */
+  public const FORCE_HTTPS_HOSTS_SETTING = 'eic_helper.force_https_hosts';
+
+  /**
    * @var \Symfony\Component\HttpKernel\HttpKernelInterface
    */
   protected HttpKernelInterface $httpKernel;
@@ -62,6 +74,8 @@ class HeaderMapper implements HttpKernelInterface {
     $type = self::MAIN_REQUEST,
     $catch = TRUE
   ): Response {
+    $this->forceHttpsForKnownHosts($request);
+
     if (
       $this->settings->get('reverse_proxy') !== FALSE
       && !empty($this->settings->get(self::HEADER_MAPPING_SETTING))
@@ -71,6 +85,39 @@ class HeaderMapper implements HttpKernelInterface {
     }
 
     return $this->httpKernel->handle($request, $type, $catch);
+  }
+
+  /**
+   * Force HTTPS scheme on the live Request for hostnames that are HTTPS-only
+   * at the edge but receive an http:// X-Forwarded-Proto from the EC proxy.
+   *
+   * Mutates $request->server (HTTPS, SERVER_PORT) and the X-Forwarded-Proto
+   * / X-Forwarded-Port headers so both Drupal's direct scheme detection and
+   * core's ReverseProxyMiddleware (priority 300) see https.
+   *
+   * Must run on the live Request object — mutating $_SERVER from
+   * settings.k8s.php is too late, since Symfony's Request snapshots $_SERVER
+   * via createFromGlobals() before settings load.
+   */
+  protected function forceHttpsForKnownHosts(Request $request): void {
+    $hosts = $this->settings->get(self::FORCE_HTTPS_HOSTS_SETTING, []);
+    if (empty($hosts)) {
+      return;
+    }
+    // Host headers are case-insensitive per RFC 7230; normalize both sides so
+    // a misconfigured DDC_FORCE_HTTPS_HOSTS=Foo.Example.Org doesn't fail open.
+    $host = strtolower($request->getHost());
+    $hosts = array_map('strtolower', $hosts);
+    if (!in_array($host, $hosts, TRUE)) {
+      return;
+    }
+    // Set both server vars and forwarded headers: the server pins handle the
+    // case where reverse_proxy trust is off (current dev state); the headers
+    // win once reverse_proxy = TRUE and ReverseProxyMiddleware takes over.
+    $request->server->set('HTTPS', 'on');
+    $request->server->set('SERVER_PORT', 443);
+    $request->headers->set('X-Forwarded-Proto', 'https');
+    $request->headers->set('X-Forwarded-Port', '443');
   }
 
   /**
