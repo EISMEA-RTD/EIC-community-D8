@@ -10,7 +10,8 @@
       "Content moderation does not sanity check original entity moderate state is present / exists": "https://www.drupal.org/files/issues/2022-06-09/add-sanity-checking-to-content-moderation-original-value-checks.patch",
       "EICNET-3009 - Change advanced sidebar \"Last saved\" datetime to EU format": "patches/core/EICNET-3009-change-date-format-last-saved.patch",
       "3456176 - 10.3 upgrade now missing status-message theme suggestions": "https://www.drupal.org/files/issues/2024-06-28/3456176-45-missing-status-messages-theme-suggestions.patch",
-      "3303889 - Error: Call to a member function uuid() on null in MediaLibraryEditorOpener->getSelectionResponse() (line 72 of /app/docroot/core/modules/media_library/src/MediaLibraryEditorOpener.php)": "https://www.drupal.org/files/issues/2023-12-01/3340973-33.patch"
+      "3303889 - Error: Call to a member function uuid() on null in MediaLibraryEditorOpener->getSelectionResponse() (line 72 of /app/docroot/core/modules/media_library/src/MediaLibraryEditorOpener.php)": "https://www.drupal.org/files/issues/2023-12-01/3340973-33.patch",
+      "2230909 - Default entity reference field to current user (MR 8282, Drupal 10.6 compatible) - replaces oe_content's 10.2-only patch": "https://www.drupal.org/files/issues/2026-03-26/8282-10.6.x.patch"
     },
     "drupal/address": {
       "2812659 - Integrate Address with Search API (adds a Search API processor to convert country code to full country name)": "https://www.drupal.org/files/issues/2021-06-14/integrate-address-searchapi-2812659-57_0.patch",

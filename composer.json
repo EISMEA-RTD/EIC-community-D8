@@ -65,6 +65,7 @@
         "drupal/group_flex": "1.x-dev#cf71378010a67088007616fe580c70cc5c9de788",
         "drupal/group_permissions": "1.0.0-rc9 as 1.0.0-alpha4",
         "drupal/hal": "^2.0",
+        "drupal/json_field": "^1.7",
         "drupal/log_stdout": "^1.5",
         "drupal/masquerade": "^2.0@beta",
         "drupal/matomo": "^1.19",
@@ -122,8 +123,10 @@
         "openeuropa/composer-artifacts": "^1.0@alpha",
         "openeuropa/ecl-twig-loader": "^4.0",
         "openeuropa/oe_authentication": "^1.13",
+        "openeuropa/oe_content": "^3.1",
         "openeuropa/oe_corporate_blocks": "^5.0",
         "openeuropa/oe_media": "^1.13",
+        "openeuropa/oe_paragraphs": "^1.32",
         "openeuropa/oe_theme": "5.0.0-beta19",
         "openeuropa/oe_time_caching": "^1.1",
         "openeuropa/oe_webtools": "^1.26.0",
@@ -178,7 +181,10 @@
         },
         "composer-exit-on-patch-failure": true,
         "composer-patches": {
-            "patches-file": "composer.patches.json"
+            "patches-file": "composer.patches.json",
+            "ignore-dependency-patches": [
+                "openeuropa/oe_content"
+            ]
         },
         "drupal-scaffold": {
             "locations": {
@@ -241,7 +247,10 @@
             }
         },
         "drupal-lenient": {
-            "allowed-list": ["drupal/aws_sqs", "drupal/ckeditor_oembed"]
+            "allowed-list": [
+                "drupal/aws_sqs",
+                "drupal/ckeditor_oembed"
+            ]
         }
     },
     "provide": {

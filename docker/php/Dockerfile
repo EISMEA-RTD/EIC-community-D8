@@ -75,5 +75,5 @@ RUN apt-get update && apt-get install -yq --no-install-recommends gnupg2 curl ca
 RUN usermod -a -G www-data web
 
 USER web
-
-CMD ["php-fpm"]
+# use the custom config to enable logging on ecs
+CMD ["php-fpm", "-y", "/usr/local/etc/php-fpm.conf", "-D", "-F"]

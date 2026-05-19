@@ -1,5 +1,5 @@
 {
-    "_hash": "8d967fe327136d1b569577a1810c6813c8ee48378a635c5e624023af0e3bbd55",
+    "_hash": "c18ca24167859bbbbfca64e5e20e455c1d2a199867e44c155d267ea14a433d24",
     "patches": {
         "drupal/core": [
             {
@@ -97,6 +97,16 @@
                 "description": "3303889 - Error: Call to a member function uuid() on null in MediaLibraryEditorOpener->getSelectionResponse() (line 72 of /app/docroot/core/modules/media_library/src/MediaLibraryEditorOpener.php)",
                 "url": "https://www.drupal.org/files/issues/2023-12-01/3340973-33.patch",
                 "sha256": "82553caae7b1abd248c9a5c12f3e3159626053062e6fb774a68bb2d07c9f6c27",
+                "depth": 2,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            },
+            {
+                "package": "drupal/core",
+                "description": "2230909 - Default entity reference field to current user (MR 8282, Drupal 10.6 compatible) - replaces oe_content's 10.2-only patch",
+                "url": "https://www.drupal.org/files/issues/2026-03-26/8282-10.6.x.patch",
+                "sha256": "7278cffd2694d08bea3fd7e152ec5c3e4c3ae125650f722741862855dc85cff6",
                 "depth": 2,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
@@ -457,12 +467,24 @@
                 }
             }
         ],
+        "drupal/paragraphs": [
+            {
+                "package": "drupal/paragraphs",
+                "description": "Paragraphs widgets validates fields that are not in the current form display @see https://www.drupal.org/project/paragraphs/issues/2890086",
+                "url": "https://www.drupal.org/files/issues/2024-08-08/respect-display-on-validation-2890086-65.patch",
+                "sha256": "2b25457a3d211d23c04ec549f571a09f77ec8d700fff096e1ed96852f6a1bc9e",
+                "depth": 1,
+                "extra": {
+                    "provenance": "dependency:drupal/paragraphs"
+                }
+            }
+        ],
         "drupal/drupal-driver": [
             {
                 "package": "drupal/drupal-driver",
                 "description": "allow-date-only-date-fields",
                 "url": "https://github.com/jhedstrom/DrupalDriver/commit/eaa9238c8c8e34372dc82ebe5367e6d24b5854e7.patch",
-                "sha256": "3c28ce0c9156a3f0d1e0d2d53933a2716d1c07c4ed4e285521569acb8b8ff65e",
+                "sha256": "e71a351db923ef87e2c51b9c4784a243d59cb2ffa83cd01c52fe63163faf3fc1",
                 "depth": 1,
                 "extra": {
                     "provenance": "dependency:drupal/drupal-driver"
