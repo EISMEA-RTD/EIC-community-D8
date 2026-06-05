@@ -411,6 +411,47 @@ class SolrSearchManager {
   }
 
   /**
+   * Build numeric range query for range facets.
+   *
+   * Generic engine driven by the source's getRangeFacets() map. For each
+   * configured range facet it adds a Solr range filter of the form
+   * "field:[FROM TO TO]" where an unset bound becomes the Solr wildcard "*".
+   * The range-facet keys are stripped from the facet.field list elsewhere so
+   * Solr does not also build a terms facet on them.
+   *
+   * @param string $range_from
+   *   The lower bound, or "*" when unset.
+   * @param string $range_to
+   *   The upper bound, or "*" when unset.
+   */
+  public function buildRangeQuery(string $range_from = '*', string $range_to = '*') {
+    if (!$this->source instanceof SourceTypeInterface) {
+      return;
+    }
+
+    $range_facets = $this->source->getRangeFacets();
+    if (empty($range_facets)) {
+      return;
+    }
+
+    // Normalise empty bounds to the Solr wildcard.
+    $from = ($range_from === '' || $range_from === NULL) ? '*' : $range_from;
+    $to = ($range_to === '' || $range_to === NULL) ? '*' : $range_to;
+
+    // Nothing to filter when both bounds are unbounded.
+    if ($from === '*' && $to === '*') {
+      return;
+    }
+
+    foreach ($range_facets as $solr_field) {
+      $range_query = "$solr_field:[$from TO $to]";
+      $this->rawQuery .= empty($this->rawQuery) ?
+        "$range_query" :
+        " AND $range_query";
+    }
+  }
+
+  /**
    * Set all facets to our SOLR request.
    *
    * @param array|null $facets_fields
@@ -418,8 +459,12 @@ class SolrSearchManager {
   public function buildFacets(?array $facets_fields) {
     $facets_fields = $facets_fields ?? [];
 
-    // Remove virtual exclude keys - Solr should not be asked for counts on them.
-    $exclude_keys = $this->source ? array_keys($this->source->getExcludeFacets()) : [];
+    // Remove virtual exclude keys and range-facet keys - Solr should not be
+    // asked to build terms facets on them.
+    $exclude_keys = $this->source ? array_merge(
+      array_keys($this->source->getExcludeFacets()),
+      array_keys($this->source->getRangeFacets())
+    ) : [];
     $facets_fields = array_filter($facets_fields, fn($f) => !in_array($f, $exclude_keys));
 
     $facets_fields = array_map(function ($facet) {

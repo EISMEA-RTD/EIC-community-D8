@@ -67,6 +67,19 @@ function eic_search_theme($existing, $type, $theme, $path) {
         'source_class' => '',
       ],
     ],
+    'resources_search_overview_block' => [
+      'variables' => [
+        'url' => '',
+        'facets' => [],
+        'sorts' => [],
+        'translations' => [],
+        'settings' => [],
+        'search_string' => '',
+        'prefilters' => [],
+        'isAnonymous' => TRUE,
+        'source_class' => '',
+      ],
+    ],
   ];
 }
 

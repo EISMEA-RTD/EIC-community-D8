@@ -253,6 +253,13 @@ abstract class SourceType implements SourceTypeInterface {
   }
 
   /**
+   * @inheritDoc
+   */
+  public function getRangeFacets(): array {
+    return [];
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function requiresAuthentication(): bool {

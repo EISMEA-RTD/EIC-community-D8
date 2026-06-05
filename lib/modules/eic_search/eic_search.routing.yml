@@ -40,3 +40,10 @@ eic_search.research_institutions:
     _controller: '\Drupal\eic_search\Controller\SearchController::researchInstitutions'
   requirements:
     _role: 'authenticated'
+eic_search.resources:
+  path: '/analyses-reports/resources'
+  defaults:
+    _title: 'Resources'
+    _controller: '\Drupal\eic_search\Controller\SearchController::resources'
+  requirements:
+    _role: 'authenticated'
