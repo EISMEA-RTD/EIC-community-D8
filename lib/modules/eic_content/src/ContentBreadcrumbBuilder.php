@@ -6,6 +6,7 @@ use Drupal\Core\Breadcrumb\Breadcrumb;
 use Drupal\Core\Breadcrumb\BreadcrumbBuilderInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Url;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\eic_overviews\GlobalOverviewPages;
@@ -72,6 +73,14 @@ class ContentBreadcrumbBuilder implements BreadcrumbBuilderInterface {
         case 'news':
         case 'story':
           $links[] = GlobalOverviewPages::getGlobalOverviewPageLink(GlobalOverviewPages::NEWS_STORIES);
+          break;
+
+        case 'resource':
+          // Section landing ("Analyses and reports"), then the Resources Library
+          // listing page, so the breadcrumb reads:
+          // Home › Analyses and reports › Resources › [title].
+          $links[] = Link::fromTextAndUrl($this->t('Analyses and reports'), Url::fromUri('internal:/analyses-reports'));
+          $links[] = Link::createFromRoute($this->t('Resources'), 'eic_search.resources');
           break;
 
       }

@@ -9,6 +9,7 @@ use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Url;
 use Drupal\eic_admin\Service\ActionFormsManager;
 use Drupal\eic_flags\RequestTypes;
 use Drupal\eic_flags\Service\RequestHandlerCollector;
@@ -189,6 +190,13 @@ class GroupBreadcrumbBuilder implements BreadcrumbBuilderInterface {
       // This has higher priority because of add group pages where a group
       // doesn't exist yet.
       $group_type = $route_match->getParameter('group_type')->id();
+    }
+
+    // Research Institutions live under the Data Explorer section, so prepend
+    // that landing to mirror the Resources breadcrumb
+    // (Home › Data Explorer › Institutions Explorer › …).
+    if ($group_type === 'research_institution') {
+      $links[] = Link::fromTextAndUrl($this->t('Data Explorer'), Url::fromUri('internal:/data-explorer'));
     }
 
     // Adds link to navigate back to the list of groups.

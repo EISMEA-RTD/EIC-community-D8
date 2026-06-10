@@ -6,6 +6,7 @@
  */
 
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\node\NodeInterface;
@@ -183,4 +184,28 @@ function eic_search_group_access(GroupInterface $group, $op, AccountInterface $a
     }
   }
   return AccessResult::neutral();
+}
+
+/**
+ * Implements hook_form_node_resource_form_alter().
+ *
+ * After saving a NEW resource node, redirect the user to the Resources listing
+ * page instead of the node view. Only the add form (node_resource_form) is
+ * affected; the edit form (node_resource_edit_form) is left untouched.
+ */
+function eic_search_form_node_resource_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
+  // Guard: only act when the entity being created is new.
+  $entity = $form_state->getFormObject()->getEntity();
+  if (!$entity->isNew()) {
+    return;
+  }
+
+  $form['actions']['submit']['#submit'][] = 'eic_search_resource_form_submit_redirect';
+}
+
+/**
+ * Submit callback: redirect to the Resources listing after creating a resource.
+ */
+function eic_search_resource_form_submit_redirect(array &$form, FormStateInterface $form_state): void {
+  $form_state->setRedirect('eic_search.resources');
 }
