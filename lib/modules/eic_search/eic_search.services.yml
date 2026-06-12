@@ -116,6 +116,10 @@ services:
     class: Drupal\eic_search\Search\Sources\ResearchInstitutionSourceType
     tags:
       - { name: eic_search.source }
+  eic_search.source_type.resource:
+    class: Drupal\eic_search\Search\Sources\ResourceSourceType
+    tags:
+      - { name: eic_search.source }
   eic_search.solr_document_processor:
     class: Drupal\eic_search\Service\SolrDocumentProcessor
     arguments: ['@search_api.post_request_indexing', '@queue', '@plugin.manager.queue_worker', '@entity_type.manager']
@@ -230,6 +234,13 @@ services:
     class: Drupal\eic_search\Search\DocumentProcessor\ProcessorResearchInstitution
     tags:
       - { name: eic_search.document_processor, priority: 36 }
+    calls:
+      - [ setStateCache, [ '@?state' ] ]
+  eic_search.document_processor.resource:
+    class: Drupal\eic_search\Search\DocumentProcessor\ProcessorResource
+    arguments: ['@file_url_generator']
+    tags:
+      - { name: eic_search.document_processor, priority: 38 }
     calls:
       - [ setStateCache, [ '@?state' ] ]
   eic_search.solr_search_manager:

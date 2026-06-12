@@ -293,6 +293,20 @@ interface SourceTypeInterface {
   public function getExcludeFacets(): array;
 
   /**
+   * Return range facets mapping virtual keys to real Solr range fields.
+   *
+   * Range facet keys are sent by the frontend with numeric "from"/"to"
+   * bounds (e.g. year_from/year_to) and produce a Solr range filter query
+   * instead of a normal terms facet. The array maps virtual key => real
+   * Solr field name. Range facet keys are stripped from the generated
+   * facet.field list so Solr does not build a terms facet on them.
+   *
+   * @return array
+   *   Associative array of virtual_key => real_solr_field.
+   */
+  public function getRangeFacets(): array;
+
+  /**
    * Determines if the source requires user authentication.
    *
    * @return bool

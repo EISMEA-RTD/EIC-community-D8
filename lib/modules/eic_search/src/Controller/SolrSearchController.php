@@ -61,6 +61,9 @@ class SolrSearchController extends ControllerBase {
     // timestamp value, if nothing set "*" (the default value on solr).
     $from_date = $request->query->get('from_date', '*');
     $end_date = $request->query->get('end_date', '*');
+    // Numeric range bounds (e.g. publication year), if nothing set "*".
+    $range_from = $request->query->get('year_from', '*');
+    $range_to = $request->query->get('year_to', '*');
     $page = (int) $request->query->get('page', 1);
     $offset = (int) $request->query->get('offset', SourceTypeInterface::READ_MORE_NUMBER_TO_LOAD);
 
@@ -88,6 +91,7 @@ class SolrSearchController extends ControllerBase {
     $search->buildFacets($facets_options);
     $search->buildSortFacets($facets_value, $sort_value);
     $search->buildDateQuery($from_date, $end_date);
+    $search->buildRangeQuery($range_from, $range_to);
     $search->buildPrefilterTopic($topic_term_id);
     $search->buildQueryPager($page, $offset);
     $search->buildSearchQuery($search_value);

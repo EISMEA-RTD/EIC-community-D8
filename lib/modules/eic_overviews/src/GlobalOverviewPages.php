@@ -63,6 +63,16 @@ class GlobalOverviewPages {
   const RESEARCH_INSTITUTIONS_UUID = 'a8b9c0d1-e2f3-4a5b-6c7d-8e9f0a1b2c3d';
 
   /**
+   * ID of the Resources Library overview page.
+   */
+  const RESOURCES = 9;
+
+  /**
+   * UUID of the Resources Library overview page.
+   */
+  const RESOURCES_UUID = 'edb56c2d-0abe-4e92-982b-98b2b4688575';
+
+  /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface

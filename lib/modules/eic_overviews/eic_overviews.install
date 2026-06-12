@@ -13,6 +13,7 @@ use Drupal\eic_overviews\GlobalOverviewPages;
  */
 function eic_overviews_install() {
   _eic_overviews_create_research_institutions_page();
+  _eic_overviews_create_resources_page();
 }
 
 /**
@@ -82,10 +83,93 @@ function _eic_overviews_create_research_institutions_page() {
 }
 
 /**
+ * Creates or updates the Resources Library overview page.
+ *
+ * The friendly URL (/analyses-reports/resources) is served by the
+ * eic_search.resources route + the resources_overview context block placement;
+ * this entity provides the overview-page metadata and admin listing entry,
+ * mirroring the Research Institutions overview.
+ *
+ * @return string
+ *   Status message.
+ */
+function _eic_overviews_create_resources_page() {
+  // Check if entity already exists with correct UUID.
+  $existing_by_uuid = \Drupal::entityQuery('overview_page')
+    ->accessCheck(FALSE)
+    ->condition('uuid', GlobalOverviewPages::RESOURCES_UUID)
+    ->execute();
+
+  if (!empty($existing_by_uuid)) {
+    return t('Resources overview page already exists with correct UUID.');
+  }
+
+  // Check if entity exists by field_overview_id (needs UUID update).
+  $existing_by_field = \Drupal::entityQuery('overview_page')
+    ->accessCheck(FALSE)
+    ->condition('field_overview_id', GlobalOverviewPages::RESOURCES)
+    ->execute();
+
+  if (!empty($existing_by_field)) {
+    $entity_id = reset($existing_by_field);
+    $connection = \Drupal::database();
+    $connection->update('overview_page')
+      ->fields(['uuid' => GlobalOverviewPages::RESOURCES_UUID])
+      ->condition('id', $entity_id)
+      ->execute();
+
+    \Drupal::entityTypeManager()->getStorage('overview_page')->resetCache([$entity_id]);
+
+    return t('Updated Resources overview page UUID to @uuid.', [
+      '@uuid' => GlobalOverviewPages::RESOURCES_UUID,
+    ]);
+  }
+
+  // Create new entity.
+  $overview_page = OverviewPage::create([
+    'uuid' => GlobalOverviewPages::RESOURCES_UUID,
+    'title' => 'Resources',
+    'field_overview_id' => GlobalOverviewPages::RESOURCES,
+    'field_overview_block' => [
+      'plugin_id' => 'resources_search_overview',
+      'settings' => [],
+    ],
+    'status' => TRUE,
+    'description' => 'Browse and search the Resources Library.',
+  ]);
+  $overview_page->save();
+
+  // Create URL alias (the friendly path is served by the eic_search.resources
+  // route; this alias mirrors the Research Institutions overview).
+  $path_alias_storage = \Drupal::entityTypeManager()->getStorage('path_alias');
+  $existing_alias = $path_alias_storage->loadByProperties([
+    'alias' => '/analyses-reports/resources',
+  ]);
+  if (empty($existing_alias)) {
+    $path_alias_storage->create([
+      'path' => '/overview_page/' . $overview_page->id(),
+      'alias' => '/analyses-reports/resources',
+      'langcode' => 'en',
+    ])->save();
+  }
+
+  return t('Created Resources overview page with ID @id.', [
+    '@id' => $overview_page->id(),
+  ]);
+}
+
+/**
  * Create Institutions Explorer overview page or update existing UUID.
  */
 function eic_overviews_update_9001(&$sandbox) {
   return _eic_overviews_create_research_institutions_page();
+}
+
+/**
+ * Create the Resources Library overview page.
+ */
+function eic_overviews_update_9003(&$sandbox) {
+  return _eic_overviews_create_resources_page();
 }
 
 /**

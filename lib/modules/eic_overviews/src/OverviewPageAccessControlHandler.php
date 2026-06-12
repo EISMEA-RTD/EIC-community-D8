@@ -24,8 +24,13 @@ class OverviewPageAccessControlHandler extends EntityAccessControlHandler {
           return AccessResult::forbidden();
         }
 
-        // Deny anonymous access to Research Institutions overview.
-        if ($entity->uuid() === GlobalOverviewPages::RESEARCH_INSTITUTIONS_UUID && $account->isAnonymous()) {
+        // Deny anonymous access to the authenticated-only overviews
+        // (Research Institutions and Resources Library).
+        $authenticated_only = [
+          GlobalOverviewPages::RESEARCH_INSTITUTIONS_UUID,
+          GlobalOverviewPages::RESOURCES_UUID,
+        ];
+        if (in_array($entity->uuid(), $authenticated_only, TRUE) && $account->isAnonymous()) {
           return AccessResult::forbidden()
             ->addCacheContexts(['user.roles:anonymous'])
             ->addCacheTags($entity->getCacheTags());

@@ -1,0 +1,6 @@
+services:
+  eic_wysiwyg.ecl_link_decorator:
+    class: Drupal\eic_wysiwyg\EclLinkDecorator
+    arguments:
+      - '@oe_theme_helper.external_links'
+      - '@extension.list.theme'

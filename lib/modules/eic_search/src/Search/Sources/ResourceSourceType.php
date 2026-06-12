@@ -3,41 +3,41 @@
 namespace Drupal\eic_search\Search\Sources;
 
 /**
- * Research Institution source type for search/filter functionality.
+ * Resource source type for the Resources Library search/filter interface.
  *
- * Defines search configuration for Research Institution groups including
- * facets, sort options, and Solr field mappings.
+ * Defines search configuration for "resource" nodes including facets, sort
+ * options, Solr field mappings and the publication year range facet.
  *
  * @package Drupal\eic_search\Search\Sources
  */
-final class ResearchInstitutionSourceType extends SourceType {
+final class ResourceSourceType extends SourceType {
 
   /**
    * {@inheritdoc}
    */
   public function getLabel(): string {
-    return $this->t('Research Institutions', [], ['context' => 'eic_search']);
+    return $this->t('Resources', [], ['context' => 'eic_search']);
   }
 
   /**
    * {@inheritdoc}
    */
   public function getSourcesId(): array {
-    return ['group'];
+    return ['node'];
   }
 
   /**
    * {@inheritdoc}
    */
   public function getEntityBundle(): string {
-    return 'research_institution';
+    return 'resource';
   }
 
   /**
    * {@inheritdoc}
    */
   public function getLayoutTheme(): string {
-    return 'rins-overview';
+    return 'resources-overview';
   }
 
   /**
@@ -45,14 +45,14 @@ final class ResearchInstitutionSourceType extends SourceType {
    */
   public function getAvailableFacets(): array {
     return [
-      'sm_ri_entity_type' => $this->t('Entity type', [], ['context' => 'eic_search']),
-      'sm_ri_key_disciplines' => $this->t('Research fields', [], ['context' => 'eic_search']),
-      'sm_ri_province' => $this->t('Province', [], ['context' => 'eic_search']),
-      'sm_ri_transparency_level' => $this->t('Transparency level', [], ['context' => 'eic_search']),
-      'sm_ri_is_sanctioned' => $this->t('Is sanctioned entity', [], ['context' => 'eic_search']),
-      'sm_ri_evidence_defense_links' => $this->t('Evidence of defense links', [], ['context' => 'eic_search']),
-      'sm_ri_risk_indicators' => $this->t('Risk indicators (include)', [], ['context' => 'eic_search']),
-      'sm_ri_risk_indicators_exclude' => $this->t('Risk indicators (exclude)', [], ['context' => 'eic_search']),
+      'sm_resource_format' => $this->t('Format', [], ['context' => 'eic_search']),
+      'sm_resource_language' => $this->t('Language', [], ['context' => 'eic_search']),
+      'sm_resource_thematic' => $this->t('Thematic area', [], ['context' => 'eic_search']),
+      'sm_resource_geo_scope' => $this->t('Geographic scope', [], ['context' => 'eic_search']),
+      'sm_resource_source' => $this->t('Source', [], ['context' => 'eic_search']),
+      'sm_resource_confidentiality' => $this->t('Confidentiality', [], ['context' => 'eic_search']),
+      'ss_resource_type' => $this->t('Type', [], ['context' => 'eic_search']),
+      'its_resource_pub_year' => $this->t('Publication year', [], ['context' => 'eic_search']),
     ];
   }
 
@@ -66,14 +66,19 @@ final class ResearchInstitutionSourceType extends SourceType {
         'DESC' => $this->t('Relevance', [], ['context' => 'eic_search']),
       ],
       'ss_global_title' => [
-        'label' => $this->t('Name', [], ['context' => 'eic_search']),
-        'ASC' => $this->t('Name (A-Z)', [], ['context' => 'eic_search']),
-        'DESC' => $this->t('Name (Z-A)', [], ['context' => 'eic_search']),
+        'label' => $this->t('Title', [], ['context' => 'eic_search']),
+        'ASC' => $this->t('Title (A-Z)', [], ['context' => 'eic_search']),
+        'DESC' => $this->t('Title (Z-A)', [], ['context' => 'eic_search']),
       ],
       'ss_drupal_changed_timestamp' => [
         'label' => $this->t('Last Updated', [], ['context' => 'eic_search']),
         'DESC' => $this->t('Recently Updated', [], ['context' => 'eic_search']),
         'ASC' => $this->t('Oldest Updated', [], ['context' => 'eic_search']),
+      ],
+      'its_resource_pub_year' => [
+        'label' => $this->t('Publication year', [], ['context' => 'eic_search']),
+        'DESC' => $this->t('Publication year (newest)', [], ['context' => 'eic_search']),
+        'ASC' => $this->t('Publication year (oldest)', [], ['context' => 'eic_search']),
       ],
     ];
   }
@@ -120,22 +125,22 @@ final class ResearchInstitutionSourceType extends SourceType {
    * {@inheritdoc}
    */
   public function getUniqueId(): string {
-    return 'research-institution-' . parent::getUniqueId();
+    return 'resource-' . parent::getUniqueId();
   }
 
   /**
    * {@inheritdoc}
    */
   public function getPrefilteredContentType(): array {
-    return ['research_institution'];
+    return ['resource'];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getExcludeFacets(): array {
+  public function getRangeFacets(): array {
     return [
-      'sm_ri_risk_indicators_exclude' => 'sm_ri_risk_indicators',
+      'its_resource_pub_year' => 'its_resource_pub_year',
     ];
   }
 
