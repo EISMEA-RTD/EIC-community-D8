@@ -41,7 +41,10 @@ class ProcessorResearchInstitution extends DocumentProcessor {
 
     // Map taxonomy term names to Solr facet fields.
     $this->mapTaxonomyField($document, $group, 'field_ri_entity_type', 'ss_ri_entity_type', 'sm_ri_entity_type');
-    $this->mapTaxonomyField($document, $group, 'field_ri_key_disciplines', 'ss_ri_key_disciplines', 'sm_ri_key_disciplines');
+    // Key disciplines is a two-level hierarchy. The filter and the results
+    // table show only the unique top-level (parent) research fields, so index
+    // the parent term names rather than the selected detailed disciplines.
+    $this->mapDisciplineTopLevel($document, $group, 'field_ri_key_disciplines', 'ss_ri_key_disciplines', 'sm_ri_key_disciplines');
     $this->mapTaxonomyField($document, $group, 'field_ri_province', 'ss_ri_province', 'sm_ri_province');
     $this->mapTaxonomyField($document, $group, 'field_ri_transparency_level', 'ss_ri_transparency_level', 'sm_ri_transparency_level');
     $this->mapTaxonomyField($document, $group, 'field_ri_is_sanctioned', 'ss_ri_is_sanctioned', 'sm_ri_is_sanctioned');
@@ -88,6 +91,58 @@ class ProcessorResearchInstitution extends DocumentProcessor {
     $names = array_map(fn($term) => $term->label(), $terms);
 
     if (!empty($names)) {
+      $document->setField($solr_single, reset($names));
+      $document->setField($solr_multi, $names);
+    }
+  }
+
+  /**
+   * Maps a hierarchical taxonomy field to its unique top-level term names.
+   *
+   * For each referenced (detailed, 2nd-level) term the top-level parent name
+   * is resolved. A term that is itself top-level (no parent) contributes its
+   * own name. Duplicate parents are collapsed so an institution active in many
+   * disciplines under the same broad grouping appears once.
+   *
+   * @param \Solarium\QueryType\Update\Query\Document $document
+   *   The Solr document being processed.
+   * @param \Drupal\Core\Entity\FieldableEntityInterface $entity
+   *   The entity.
+   * @param string $drupal_field
+   *   The Drupal field machine name.
+   * @param string $solr_single
+   *   The Solr field name for single value (ss_ prefix).
+   * @param string $solr_multi
+   *   The Solr field name for multi value (sm_ prefix).
+   */
+  protected function mapDisciplineTopLevel(
+    Document &$document,
+    FieldableEntityInterface $entity,
+    string $drupal_field,
+    string $solr_single,
+    string $solr_multi
+  ): void {
+    if (!$entity->hasField($drupal_field)) {
+      return;
+    }
+
+    $field = $entity->get($drupal_field);
+    if ($field->isEmpty()) {
+      return;
+    }
+
+    $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+    $names = [];
+    foreach ($field->referencedEntities() as $term) {
+      $parents = $term_storage->loadParents($term->id());
+      // loadParents() returns the top-level parent(s); fall back to the term
+      // itself when it is already a top-level research field.
+      $top = $parents ? reset($parents) : $term;
+      $names[$top->id()] = $top->label();
+    }
+
+    if (!empty($names)) {
+      $names = array_values($names);
       $document->setField($solr_single, reset($names));
       $document->setField($solr_multi, $names);
     }
