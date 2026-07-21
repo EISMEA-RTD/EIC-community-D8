@@ -2,7 +2,6 @@
 
 namespace Drupal\eic_search\Search\DocumentProcessor;
 
-use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
@@ -143,7 +142,7 @@ class ProcessorResource extends DocumentProcessor {
   }
 
   /**
-   * Maps a plain-text excerpt of the description to a Solr field.
+   * Maps the plain-text description to a Solr field.
    *
    * @param \Solarium\QueryType\Update\Query\Document $document
    *   The Solr document being processed.
@@ -166,7 +165,7 @@ class ProcessorResource extends DocumentProcessor {
       return;
     }
 
-    $document->setField('ss_resource_description', Unicode::truncate($plain, 300, TRUE, TRUE));
+    $document->setField('ss_resource_description', $plain);
   }
 
   /**
