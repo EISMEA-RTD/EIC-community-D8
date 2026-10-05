@@ -2,6 +2,7 @@
 
 namespace Drupal\eic_search\Search\DocumentProcessor;
 
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\StringTranslation\ByteSizeMarkup;
@@ -22,6 +23,22 @@ use Solarium\QueryType\Update\Query\Document;
  * @package Drupal\eic_search\Search\DocumentProcessor
  */
 class ProcessorResource extends DocumentProcessor {
+
+  /**
+   * Inline tags kept in the indexed description.
+   *
+   * The overview row renders this markup as HTML, so the whitelist is applied
+   * at index time and deliberately excludes block-level tags: the description
+   * sits inside an ECL teaser that is styled for a single text run.
+   */
+  private const DESCRIPTION_ALLOWED_TAGS = [
+    'a',
+    'em',
+    'strong',
+    'b',
+    'i',
+    'br',
+  ];
 
   /**
    * The file URL generator.
@@ -142,7 +159,13 @@ class ProcessorResource extends DocumentProcessor {
   }
 
   /**
-   * Maps the plain-text description to a Solr field.
+   * Maps the description to a Solr field, keeping a subset of inline HTML.
+   *
+   * The raw field value is first run through its text format so the stored
+   * markup matches what the full node view renders, then reduced to
+   * self::DESCRIPTION_ALLOWED_TAGS. Sanitising here rather than at render time
+   * means the Solr document only ever holds safe markup, which is what lets the
+   * overview row output it as HTML.
    *
    * @param \Solarium\QueryType\Update\Query\Document $document
    *   The Solr document being processed.
@@ -159,13 +182,13 @@ class ProcessorResource extends DocumentProcessor {
       return;
     }
 
-    $value = (string) $field->value;
-    $plain = trim(preg_replace('/\s+/', ' ', strip_tags($value)));
-    if ($plain === '') {
+    $rendered = (string) check_markup($field->value, $field->format ?: NULL);
+    $safe = trim(preg_replace('/\s+/', ' ', Xss::filter($rendered, self::DESCRIPTION_ALLOWED_TAGS)));
+    if ($safe === '') {
       return;
     }
 
-    $document->setField('ss_resource_description', $plain);
+    $document->setField('ss_resource_description', $safe);
   }
 
   /**

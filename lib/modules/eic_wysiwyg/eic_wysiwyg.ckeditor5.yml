@@ -1,0 +1,33 @@
+eic_wysiwyg_popover:
+  ckeditor5:
+    plugins:
+      - ddcPopover.DdcPopover
+  drupal:
+    label: Tooltip
+    library: eic_wysiwyg/ckeditor5.popover
+    admin_library: eic_wysiwyg/ckeditor5.popover.admin
+    toolbar_items:
+      ddcPopover:
+        label: Tooltip
+    # Declaring the elements here is what makes core extend filter_html's
+    # allowed_html automatically when the button is added to a format, so the
+    # tags never have to be hand-maintained.
+    #
+    # Bare <span> is declared alongside the attribute form because this plugin
+    # genuinely creates the element: DdcPopoverEditing's data downcast calls
+    # createAttributeElement('span', ...) rather than decorating a span some
+    # other plugin produced. Without it, FundamentalCompatibilityConstraint
+    # counts <span> as non-creatable and rejects the format unless another
+    # plugin -- or Source Editing -- happens to carry <span> as well.
+    #
+    # The trade-off: a format whose Source Editing still lists a bare <span>
+    # now trips SourceEditingRedundantTagsConstraint instead. Drop <span> from
+    # Source Editing there; it is redundant once this button is enabled.
+    elements:
+      - <span>
+      - <span data-ddc-popover-content>
+    # Without the render filter the stored markup would come out as inert bare
+    # text, so the button is only offered where the filter is enabled. Same
+    # mechanism media_embed uses.
+    conditions:
+      filter: filter_ddc_popover

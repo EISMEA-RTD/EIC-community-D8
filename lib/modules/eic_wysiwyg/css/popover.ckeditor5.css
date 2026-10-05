@@ -1,0 +1,83 @@
+/**
+ * @file
+ * Editing-view and balloon styling for inline tooltip annotations.
+ *
+ * Kept deliberately small. CKEditor already styles the parts via .ck-label
+ * (display + weight) and .ck-input (background, border, padding, min-height,
+ * transition), so nothing here redeclares those. Note .ck-responsive-form no
+ * longer exists in CKEditor 5 v47, which is why the form supplies its own
+ * layout.
+ */
+
+/* Editing view: shows which text carries an annotation. */
+.ck-content .ddc-popover-trigger {
+  background-color: rgba(14, 71, 203, 0.08);
+  border-bottom: 1px dotted currentColor;
+  cursor: default;
+}
+
+/**
+ * Balloon form.
+ *
+ * --ck-input-width is how CKEditor itself makes a field fill a form; see
+ * .ck-image-insert-url in the core styles.
+ */
+.ck.ddc-popover-form {
+  display: grid;
+  width: 320px;
+  max-width: 90vw;
+  grid-template-areas:
+    "label  label"
+    "field  field"
+    "cancel save";
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ck-spacing-large);
+  padding: var(--ck-spacing-large);
+
+  --ck-input-width: 100%;
+}
+
+.ck.ddc-popover-form > .ck-label {
+  grid-area: label;
+}
+
+/* A textarea does not inherit the UI font, and needs to be resizable. */
+.ck.ddc-popover-form > .ck-input {
+  font: inherit;
+  min-height: 6em;
+  resize: vertical;
+  grid-area: field;
+}
+
+/*
+ * CKEditor buttons carry a min-width that overflows a narrow grid track and
+ * clips the label. Same fix core applies to its own action rows.
+ */
+.ck.ddc-popover-form > .ck-button {
+  justify-content: center;
+  min-width: auto;
+}
+
+.ck.ddc-popover-form > .ddc-popover-form__cancel {
+  grid-area: cancel;
+}
+
+.ck.ddc-popover-form > .ddc-popover-form__save {
+  grid-area: save;
+}
+
+/* Edit / Remove balloon on an existing annotation. */
+.ck.ddc-popover-actions {
+  display: flex;
+  align-items: center;
+  max-width: 340px;
+  padding: var(--ck-spacing-small);
+}
+
+.ck.ddc-popover-actions .ddc-popover-actions__preview {
+  overflow: hidden;
+  flex: 1 1 auto;
+  padding-inline: var(--ck-spacing-medium);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

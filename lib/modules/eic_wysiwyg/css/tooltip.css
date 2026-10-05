@@ -1,0 +1,41 @@
+/**
+ * @file
+ * Inline ECL tooltip annotations.
+ *
+ * The trigger carries ECL's own .ecl-link class and the popup is built and
+ * styled entirely by ECL. This file exists only for the two things ECL cannot
+ * supply for this use case.
+ *
+ * Attached conditionally by FilterDdcPopover, so pages without an annotation
+ * never load it.
+ */
+
+/**
+ * 1. Cursor.
+ *
+ * .ecl-link sets no cursor at all -- ECL assumes the element is an <a href>,
+ * where the browser's own stylesheet supplies the pointer. Our trigger is a
+ * <span>, so it would otherwise show the text I-beam. "help" rather than
+ * "pointer" because nothing here is clickable: the content is revealed on
+ * hover and on keyboard focus.
+ */
+.ecl-link[data-ecl-tooltip],
+.ecl-link[data-ecl-tooltip-inverted] {
+  cursor: help;
+}
+
+/**
+ * 2. Line breaks.
+ *
+ * The filter writes an author's break as U+2028 LINE SEPARATOR, which CSS
+ * breaks on whatever white-space says, so this rule is not what makes the
+ * break appear. It is the safety net for a plain newline: ECL assigns the
+ * popup content with textContent, so one would otherwise collapse to a space.
+ * pre-line keeps it while still wrapping long lines normally.
+ *
+ * This targets ECL's generated popup, which carries no marker tying it back to
+ * this feature, so it necessarily applies to every ECL tooltip on the page.
+ */
+.ecl-tooltip {
+  white-space: pre-line;
+}

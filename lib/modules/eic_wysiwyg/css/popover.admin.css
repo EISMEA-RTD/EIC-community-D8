@@ -1,0 +1,11 @@
+/**
+ * @file
+ * Toolbar-builder icon for the text format admin form.
+ *
+ * Core's toolbar.admin.css supplies the box (36px, background centred,
+ * no-repeat, 20px background-size); each plugin only supplies the image,
+ * keyed on its toolbar item id. See web/core/modules/ckeditor5/css/*.admin.css.
+ */
+.ckeditor5-toolbar-button-ddcPopover {
+  background-image: url(../icons/popover.svg);
+}

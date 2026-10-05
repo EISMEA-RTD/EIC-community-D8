@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Drupal\eic_wysiwyg;
 
 use Drupal\Core\Extension\ExtensionList;
-use Drupal\Core\Extension\UnknownExtensionException;
+use Drupal\Core\Extension\Exception\UnknownExtensionException;
 use Drupal\Core\Url;
 use Drupal\oe_theme_helper\ExternalLinks;
 

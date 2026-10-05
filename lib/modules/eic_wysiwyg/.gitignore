@@ -1,0 +1,3 @@
+# Dev-only CKEditor 5 build dependencies. js/build/ IS committed.
+node_modules/
+package-lock.json

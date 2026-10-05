@@ -6,7 +6,7 @@ namespace Drupal\eic_wysiwyg\Plugin\Filter;
 
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Extension\ExtensionList;
-use Drupal\Core\Extension\UnknownExtensionException;
+use Drupal\Core\Extension\Exception\UnknownExtensionException;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\filter\FilterProcessResult;
 use Drupal\filter\Plugin\FilterBase;
