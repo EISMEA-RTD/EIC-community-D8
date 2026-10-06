@@ -95,7 +95,7 @@ class MemberAccessController extends ControllerBase {
 
     $login_url = Url::fromRoute('cas.login', [], [
       'attributes' => [
-        'class' => ['cas-login-link'],
+        'class' => ['cas-login-link', 'ecl-button', 'ecl-button--secondary', 'ecl-button--neutral'],
       ],
     ]);
 

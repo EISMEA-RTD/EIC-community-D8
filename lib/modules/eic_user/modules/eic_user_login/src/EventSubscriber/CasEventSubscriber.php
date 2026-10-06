@@ -9,6 +9,7 @@ use Drupal\cas\Event\CasPreUserLoadEvent;
 use Drupal\cas\Service\CasHelper;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\eic_user_login\Constants\SmedUserStatuses;
 use Drupal\eic_user_login\Exception\SmedUserLoginException;
 use Drupal\eic_user_login\Service\SmedUserManager;
 use Drupal\eic_user_login\Service\SmedUserConnection;
@@ -84,6 +85,8 @@ class CasEventSubscriber implements EventSubscriberInterface {
   public function userPreRegister(CasPreRegisterEvent $event) {
     // Check if user can register without SMED.
     if ($this->configFactory->get('eic_user_login.settings')->get('allow_user_register') === TRUE) {
+      // Without SMED, EU Login users are valid as soon as they register.
+      $event->setPropertyValue('field_user_status', SmedUserStatuses::USER_VALID);
       return;
     }
 
@@ -111,6 +114,14 @@ class CasEventSubscriber implements EventSubscriberInterface {
     $account->setEmail($properties->getAttribute('email'));
     $account->field_first_name->value = $properties->getAttribute('firstName');
     $account->field_last_name->value = $properties->getAttribute('lastName');
+
+    // Without SMED, accounts created before the status was set on
+    // registration are valid too.
+    if ($this->configFactory->get('eic_user_login.settings')->get('allow_user_register') === TRUE
+      && $account->hasField('field_user_status')
+      && $account->get('field_user_status')->isEmpty()) {
+      $account->set('field_user_status', SmedUserStatuses::USER_VALID);
+    }
     $account->save();
 
     if ($this->configFactory->get('eic_user_login.settings')->get('check_sync_user')) {
