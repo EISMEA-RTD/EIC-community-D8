@@ -1,0 +1,19 @@
+/**
+ * @file
+ * Full-width tables in the CKEditor 5 editing view.
+ *
+ * CKEditor's own content styles render the table widget as `display: table`
+ * with auto width, so a table shrinks to fit its content. On the front end
+ * FilterEclTable adds .ecl-table, which ECL sets to `width: 100%`. These rules
+ * make the editor match, so editors see the layout readers will get.
+ *
+ * Scoped to .ck-content so nothing outside the editing area is affected.
+ */
+.ck-content figure.table {
+  display: block;
+  width: 100%;
+}
+
+.ck-content figure.table > table {
+  width: 100%;
+}

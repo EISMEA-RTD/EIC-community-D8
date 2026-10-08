@@ -1,19 +1,19 @@
 filter_settings.filter_ddc_popover:
   type: mapping
-  label: 'ECL inline tooltip filter settings'
+  label: 'ECL inline popover filter settings'
   mapping:
-    inverted:
-      type: boolean
-      label: 'Use the inverted (dark) tooltip style'
-    # Retained so text formats saved against the earlier ECL Popover rendering
-    # keep validating. Neither affects the tooltip: ECL opens on hover and
-    # focus by default, and a tooltip has no close button.
     show_close_button:
       type: boolean
-      label: 'Deprecated: show a close button'
+      label: 'Show a close button inside the popover'
+    # Retained so text formats saved against earlier renderings keep
+    # validating. Neither has any effect: ECL Popover opens on click, and
+    # there is no inverted popover style.
     enable_hover:
       type: boolean
       label: 'Deprecated: open on hover'
+    inverted:
+      type: boolean
+      label: 'Deprecated: inverted tooltip style'
 
 # This filter has shipped without schema since it was written; declaring it
 # here keeps strict-schema checking (and config inspector) green.

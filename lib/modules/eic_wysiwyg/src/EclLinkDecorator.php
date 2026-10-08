@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\eic_wysiwyg;
 
-use Drupal\Core\Extension\ExtensionList;
-use Drupal\Core\Extension\Exception\UnknownExtensionException;
 use Drupal\Core\Url;
 use Drupal\oe_theme_helper\ExternalLinks;
 
@@ -14,11 +12,8 @@ use Drupal\oe_theme_helper\ExternalLinks;
  */
 class EclLinkDecorator {
 
-  private const FALLBACK_ICON_PATH = '/themes/contrib/oe_theme/dist/ecl/images/icons/sprites/icons.svg';
-
   public function __construct(
     protected ExternalLinks $externalLinks,
-    protected ExtensionList $themeExtensionList,
   ) {}
 
   /**
@@ -39,14 +34,14 @@ class EclLinkDecorator {
     }
 
     $title = $element['#title'] ?? '';
-    $icon_path = $this->getIconPath();
 
+    // ECL 5 icons are painted by Webtools (load.js) from the wt-icon--* class,
+    // matching oe_theme's ecl-icon component; there is no SVG sprite.
     $element['#title'] = [
       '#type' => 'inline_template',
-      '#template' => '<span class="ecl-link__label">{{ label }}</span><svg class="ecl-icon ecl-icon--2xs ecl-link__icon" focusable="false" aria-hidden="true"><use href="{{ icon_path }}#external" xlink:href="{{ icon_path }}#external"></use></svg>',
+      '#template' => '<span class="ecl-link__label">{{ label }}</span><span class="wt-icon--external ecl-icon ecl-icon--external ecl-icon--2xs ecl-link__icon" aria-hidden="true"></span>',
       '#context' => [
         'label' => $title,
-        'icon_path' => $icon_path,
       ],
     ];
 
@@ -82,18 +77,6 @@ class EclLinkDecorator {
       return FALSE;
     }
     return $this->externalLinks->isExternalLink($uri);
-  }
-
-  /**
-   * Returns the path to the ECL icon sprite.
-   */
-  protected function getIconPath(): string {
-    try {
-      return base_path() . $this->themeExtensionList->getPath('ddc_theme') . '/dist/eu/images/icons/sprites/icons.svg';
-    }
-    catch (UnknownExtensionException) {
-      return self::FALLBACK_ICON_PATH;
-    }
   }
 
 }

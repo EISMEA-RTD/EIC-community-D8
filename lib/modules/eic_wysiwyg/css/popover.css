@@ -1,0 +1,147 @@
+/**
+ * @file
+ * Inline ECL popover annotations.
+ *
+ * The ECL Popover component's own CSS ships globally via
+ * oe_theme/component_library_ec. This file adds only what is missing when the
+ * component is emitted with phrasing-content tags instead of ECL's stock divs,
+ * plus the trigger styling.
+ *
+ * Attached conditionally by FilterDdcPopover, so pages without a popover never
+ * load it. Every selector is scoped to .ddc-popover, so load order relative to
+ * ecl-ec.css does not matter.
+ */
+
+/**
+ * Span-based structure fixes.
+ *
+ * .ecl-popover is already `display: inline-block; position: relative` and
+ * .ecl-popover__container is already `position: absolute` (popover.scss:16-26),
+ * so neither needs anything here. The two below are statically positioned, and
+ * min/max-width, overflow-y and max-height do not apply to inline boxes.
+ *
+ * Do NOT add a display rule for .ddc-popover__container. An author-origin
+ * `display` beats the user-agent `[hidden] { display: none }` rule, and the
+ * popover would be permanently open.
+ */
+.ddc-popover .ecl-popover__scrollable,
+.ddc-popover .ecl-popover__content {
+  display: block;
+}
+
+/**
+ * The popover sits in a run of body text as an inline-block. ECL's own
+ * popover.scss already says so; it is restated here so the layout does not
+ * depend on that stylesheet's load order.
+ *
+ * inline-block means the trigger phrase cannot break across lines. max-width
+ * keeps a pathological trigger from causing horizontal overflow; keep triggers
+ * to a few words editorially.
+ */
+.ddc-popover {
+  display: inline-block;
+  max-width: 100%;
+  position: relative;
+}
+
+/**
+ * Match the RI popover's mobile clamp so a 288px min-width panel cannot push
+ * the page sideways on a 320px viewport.
+ * See lib/themes/ddc_theme/css/ri-full-view.css.
+ */
+.ddc-popover .ecl-popover__scrollable {
+  max-width: min(560px, calc(100vw - 2rem));
+  min-width: auto;
+}
+
+/**
+ * The trigger.
+ *
+ * A dotted underline marks the phrase as carrying extra information without
+ * reading as an ordinary link. Thickness and offset match ECL's own .ecl-link
+ * rule; the underline turns solid on hover and while the popover is open.
+ *
+ * Explicit resets rather than `all: unset`, which would also clear `cursor`
+ * and `direction` and interacts badly with :focus-visible inheritance.
+ */
+.ddc-popover__toggle {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  text-align: inherit;
+  text-decoration: underline dotted;
+  text-decoration-thickness: from-font;
+  text-underline-offset: clamp(3px, 0.245em, 10px);
+}
+
+/* Solid on hover/open: affordance without a layout shift. */
+.ddc-popover__toggle:hover,
+.ddc-popover__toggle[aria-expanded="true"] {
+  color: var(--c-p, #0e47cb);
+  text-decoration-style: solid;
+}
+
+.ddc-popover__toggle:focus-visible {
+  outline: 2px solid var(--c-p, #0e47cb);
+  outline-offset: 2px;
+}
+
+/**
+ * Links pasted into the content are auto-linked by the filter as .ecl-link
+ * and take ECL's default link styling. A long bare URL wraps instead of
+ * widening the panel.
+ */
+.ddc-popover .ddc-popover__content a {
+  overflow-wrap: anywhere;
+}
+
+/* Keep the close button clear of the first line of content. */
+.ddc-popover .ecl-popover__close + .ddc-popover__content {
+  padding-inline-end: var(--s-l, 1.5rem);
+}
+
+/**
+ * Close button.
+ *
+ * The glyph is drawn here rather than emitted as an ECL icon, so the filter
+ * output does not depend on the ECL icon sprite path.
+ */
+.ddc-popover__close {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  float: inline-end;
+  height: 1.5rem;
+  line-height: 1;
+  padding: 0;
+  width: 1.5rem;
+}
+
+.ddc-popover__close::before {
+  content: "\00d7";
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  text-align: center;
+}
+
+.ddc-popover__close:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.ddc-popover__close:focus-visible {
+  outline: 2px solid var(--c-p, #0e47cb);
+  outline-offset: 1px;
+}

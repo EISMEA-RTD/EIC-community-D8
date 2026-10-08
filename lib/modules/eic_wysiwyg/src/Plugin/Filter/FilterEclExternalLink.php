@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Drupal\eic_wysiwyg\Plugin\Filter;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Core\Extension\ExtensionList;
-use Drupal\Core\Extension\Exception\UnknownExtensionException;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\filter\FilterProcessResult;
 use Drupal\filter\Plugin\FilterBase;
@@ -26,23 +24,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class FilterEclExternalLink extends FilterBase implements ContainerFactoryPluginInterface {
 
   /**
-   * The fallback icon sprite path.
-   */
-  private const FALLBACK_ICON_PATH = '/themes/contrib/oe_theme/dist/ecl/images/icons/sprites/icons.svg';
-
-  /**
    * The external links helper service.
    *
    * @var \Drupal\oe_theme_helper\ExternalLinks
    */
   protected ExternalLinks $externalLinks;
-
-  /**
-   * The theme extension list service.
-   *
-   * @var \Drupal\Core\Extension\ExtensionList
-   */
-  protected ExtensionList $themeExtensionList;
 
   /**
    * Constructs a FilterEclExternalLink object.
@@ -55,13 +41,10 @@ class FilterEclExternalLink extends FilterBase implements ContainerFactoryPlugin
    *   The plugin definition.
    * @param \Drupal\oe_theme_helper\ExternalLinks $external_links
    *   The external links helper service.
-   * @param \Drupal\Core\Extension\ExtensionList $theme_extension_list
-   *   The theme extension list service.
    */
-  public function __construct(array $configuration, string $plugin_id, $plugin_definition, ExternalLinks $external_links, ExtensionList $theme_extension_list) {
+  public function __construct(array $configuration, string $plugin_id, $plugin_definition, ExternalLinks $external_links) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->externalLinks = $external_links;
-    $this->themeExtensionList = $theme_extension_list;
   }
 
   /**
@@ -72,8 +55,7 @@ class FilterEclExternalLink extends FilterBase implements ContainerFactoryPlugin
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('oe_theme_helper.external_links'),
-      $container->get('extension.list.theme')
+      $container->get('oe_theme_helper.external_links')
     );
   }
 
@@ -89,7 +71,6 @@ class FilterEclExternalLink extends FilterBase implements ContainerFactoryPlugin
 
     $dom = Html::load($text);
     $xpath = new \DOMXPath($dom);
-    $icon_path = $this->getIconPath();
 
     /** @var \DOMElement $link */
     foreach ($xpath->query('//a[@href]') as $link) {
@@ -123,7 +104,7 @@ class FilterEclExternalLink extends FilterBase implements ContainerFactoryPlugin
       }
 
       if (!$this->hasDescendantWithClass($xpath, $link, 'ecl-link__icon')) {
-        $link->appendChild($this->createExternalIcon($dom, $icon_path));
+        $link->appendChild($this->createExternalIcon($dom));
       }
     }
 
@@ -179,41 +160,21 @@ class FilterEclExternalLink extends FilterBase implements ContainerFactoryPlugin
   /**
    * Creates an ECL external-link icon element.
    *
+   * ECL 5 icons are painted by Webtools (load.js) from the wt-icon--* class,
+   * matching oe_theme's ecl-icon component; there is no SVG sprite.
+   *
    * @param \DOMDocument $dom
    *   The DOM document.
-   * @param string $icon_path
-   *   The ECL icon sprite path.
    *
    * @return \DOMElement
-   *   The SVG icon element.
+   *   The icon placeholder element.
    */
-  protected function createExternalIcon(\DOMDocument $dom, string $icon_path): \DOMElement {
-    $svg = $dom->createElementNS('http://www.w3.org/2000/svg', 'svg');
-    $svg->setAttribute('class', 'ecl-icon ecl-icon--2xs ecl-link__icon');
-    $svg->setAttribute('focusable', 'false');
-    $svg->setAttribute('aria-hidden', 'true');
+  protected function createExternalIcon(\DOMDocument $dom): \DOMElement {
+    $icon = $dom->createElement('span');
+    $icon->setAttribute('class', 'wt-icon--external ecl-icon ecl-icon--external ecl-icon--2xs ecl-link__icon');
+    $icon->setAttribute('aria-hidden', 'true');
 
-    $use = $dom->createElementNS('http://www.w3.org/2000/svg', 'use');
-    $use->setAttribute('href', $icon_path . '#external');
-    $use->setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', $icon_path . '#external');
-    $svg->appendChild($use);
-
-    return $svg;
-  }
-
-  /**
-   * Gets the ECL icon sprite path.
-   *
-   * @return string
-   *   The icon sprite path.
-   */
-  protected function getIconPath(): string {
-    try {
-      return base_path() . $this->themeExtensionList->getPath('ddc_theme') . '/dist/eu/images/icons/sprites/icons.svg';
-    }
-    catch (UnknownExtensionException $exception) {
-      return self::FALLBACK_ICON_PATH;
-    }
+    return $icon;
   }
 
 }

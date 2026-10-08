@@ -31,3 +31,18 @@ eic_wysiwyg_popover:
     # mechanism media_embed uses.
     conditions:
       filter: filter_ddc_popover
+
+# Editor-only styling for tables; ships no CKEditor plugin of its own. Having
+# no toolbar item, it is enabled automatically on every text format where the
+# core Table plugin is enabled -- the same pattern oe_theme_helper uses for its
+# table add-ons.
+eic_wysiwyg_table_width:
+  ckeditor5:
+    plugins: []
+  drupal:
+    label: Full-width tables
+    library: eic_wysiwyg/ckeditor5.table
+    elements: false
+    conditions:
+      plugins:
+        - ckeditor5_table

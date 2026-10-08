@@ -28,13 +28,10 @@
         data-ecl-login-toggle
         aria-expanded="false"
       >
-        <svg
-          focusable="false"
-          aria-hidden="true"
-          class="ecl-icon ecl-icon--m ecl-site-header__icon"
-        >
-          <use xlink:href="{{ ecl_icon_path }}#logged-in"></use>
-        </svg>
+        {% include '@ecl/icon/icon.html.twig' with {
+          icon: { name: 'logged-in', size: 'm' },
+          extra_classes: 'ecl-site-header__icon',
+        } only %}
         {{- user.name -}}
       </a>
       <div
@@ -69,13 +66,10 @@
         href="{{ login.link.path }}"
         data-ecl-login-toggle
       >
-        <svg
-          focusable="false"
-          aria-hidden="true"
-          class="ecl-icon ecl-icon--m ecl-site-header__icon"
-        >
-          <use xlink:href="{{ ecl_icon_path }}#log-in"></use>
-        </svg>
+        {% include '@ecl/icon/icon.html.twig' with {
+          icon: { name: 'log-in', size: 'm' },
+          extra_classes: 'ecl-site-header__icon',
+        } only %}
         {{- login.link.label -}}
       </a>
     {% endif %}

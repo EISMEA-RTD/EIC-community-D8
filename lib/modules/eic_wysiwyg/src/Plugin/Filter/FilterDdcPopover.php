@@ -11,63 +11,58 @@ use Drupal\filter\FilterProcessResult;
 use Drupal\filter\Plugin\FilterBase;
 
 /**
- * Renders inline annotations as ECL Tooltip triggers.
+ * Renders inline annotations as ECL Popover components.
  *
  * Editors mark a phrase in the WYSIWYG and attach secondary information to it.
  * That is stored as a single inline element carrying one attribute:
  *
  * @code
- * <span data-ddc-popover-content="Some detail.">phrase</span>
+ * <span data-ddc-popover-content="Some detail. https://example.com">phrase</span>
  * @endcode
  *
  * A single inline element is a hard requirement, not a style choice: the
  * annotation lives inside body copy, and filter_autop and filter_htmlcorrector
  * would split the surrounding paragraph around any block-level markup.
  *
- * This filter rewrites that into an ECL Tooltip trigger. ECL's Tooltip
- * component (5.0.1+, shipped by oe_theme) is entirely JavaScript-driven: it
- * finds [data-ecl-tooltip] elements, builds the popup itself, and applies
- * role="tooltip", aria-describedby and aria-hidden. It assigns the content with
- * textContent -- never innerHTML -- so the popup can only ever contain plain
- * text, and is XSS-safe by construction.
+ * The stored content is plain text. Authors never write markup; they paste a
+ * URL and this filter turns it into a link. Two pieces of structure survive:
+ * - Line breaks, emitted as <br>.
+ * - http(s) URLs, emitted as <a href>.
+ * Both are built as DOM nodes from the plain text, never parsed from it, so
+ * the popover can contain nothing else and is XSS-safe by construction.
  *
- * The trigger carries ECL's own .ecl-link class, so no styling ships with this
- * feature beyond a cursor rule and white-space handling in css/tooltip.css.
+ * Links rule out ECL Tooltip: it assigns its popup with textContent, and a
+ * hover popup closes before the pointer can reach a link inside it. ECL
+ * Popover opens on click, stays open, and works on touch devices. Its CSS and
+ * JS ship globally via oe_theme/component_library_ec, whose ecl_auto_init.js
+ * picks up [data-ecl-auto-init]; so no JavaScript ships with this feature.
  *
- * Two deliberate trade-offs, both inherent to the component:
- * - Content is plain text, apart from line breaks. Links and emphasis are not
- *   possible; markup would render literally, so it is stripped here.
- * - ECL Tooltip is hover/focus driven and ECL's own guidance advises against
- *   it on touch-only devices. Triggers carry tabindex="0" so keyboard users can
- *   reach them, but touch users have no equivalent affordance. Use the ECL
- *   Popover component instead where that matters.
+ * The markup is ECL's popover structure built from <span>s rather than ECL's
+ * <div>s, so it stays legal inside a <p>; css/popover.css restores the block
+ * boxes ECL's CSS expects inside it.
  *
- * The plugin id still says "popover" because it is referenced by saved text
- * format configuration; renaming it would break that config.
+ * WEIGHT: this filter must run FIRST after filter_html, before every other
+ * filter -- in particular before filter_autop and filter_url.
  *
- * WEIGHT: this filter must run LAST, after every other filter.
+ * Those filters are regex-based and do not respect attribute boundaries.
+ * _filter_autop() splits text only on pre|script|style|object|iframe tags, so
+ * it rewrites a newline inside the stored attribute into "<br />". filter_url
+ * then treats the text between those injected tags as body copy and wraps any
+ * URL in <a href="...">, whose quote ends the attribute early: the rest of
+ * the content spills into the page as text.
  *
- * The reason is _filter_autop(). It splits text only on
- * pre|script|style|object|iframe tags -- not on tags generally -- so it
- * rewrites newlines found inside attribute values too, turning a stored line
- * break into a literal "<br />" that later filters escape into visible text.
- * Encoding the break to dodge autop does not work either: a character
- * reference is decoded straight back to a newline by any filter that does an
- * Html::load()/Html::serialize() round-trip first, and eic_filter_div_tables
- * does exactly that whenever the text contains a table.
- *
- * Running last sidesteps all of it. By the time this filter sees the stored
- * attribute autop has already been through it, and strip_tags() in
- * toPlainText() removes the injected "<br />" while leaving the newline. Since
- * nothing runs afterwards, the newline this filter emits reaches the browser
- * intact, where css/tooltip.css renders it via white-space: pre-line.
+ * Running first means the attribute is consumed before any of that can
+ * happen. Everything emitted here is phrasing content (span, button, br, a)
+ * with no newlines, so autop leaves it alone and filter_url skips text that
+ * is already inside a link. filter_html has already run, so it never sees
+ * the emitted <button>s.
  *
  * @Filter(
  *   id = "filter_ddc_popover",
- *   title = @Translation("ECL inline tooltip"),
- *   description = @Translation("Renders inline annotations created in the editor as ECL Tooltip triggers. Must be the LAST filter in the processing order."),
+ *   title = @Translation("ECL inline popover"),
+ *   description = @Translation("Renders inline annotations created in the editor as ECL Popover components, linking any URLs in them. Must run immediately after &quot;Limit allowed HTML tags&quot;, before every other filter."),
  *   type = Drupal\filter\Plugin\FilterInterface::TYPE_TRANSFORM_IRREVERSIBLE,
- *   weight = 50,
+ *   weight = -49,
  *   settings = {
  *     "show_close_button" = TRUE,
  *     "enable_hover" = FALSE,
@@ -78,19 +73,27 @@ use Drupal\filter\Plugin\FilterBase;
 class FilterDdcPopover extends FilterBase {
 
   /**
-   * The attribute carrying the tooltip content on the stored markup.
+   * The attribute carrying the popover content on the stored markup.
    */
   public const CONTENT_ATTRIBUTE = 'data-ddc-popover-content';
+
+  /**
+   * Matches an http(s) URL in plain text.
+   *
+   * Stops at whitespace and at characters that cannot appear unencoded in a
+   * URL. Trailing sentence punctuation is trimmed separately by linkify().
+   */
+  private const URL_PATTERN = '~https?://[^\s<>"\']+~iu';
 
   /**
    * {@inheritdoc}
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
-    $form['inverted'] = [
+    $form['show_close_button'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Use the inverted (dark) tooltip style'),
-      '#default_value' => $this->settings['inverted'] ?? FALSE,
-      '#description' => $this->t('Renders the ECL tooltip on a dark background.'),
+      '#title' => $this->t('Show a close button inside the popover'),
+      '#default_value' => $this->settings['show_close_button'] ?? TRUE,
+      '#description' => $this->t('The popover can always be closed with Escape, by clicking outside it, or by clicking the trigger again.'),
     ];
     return $form;
   }
@@ -107,13 +110,12 @@ class FilterDdcPopover extends FilterBase {
 
     $dom = Html::load($text);
     $xpath = new \DOMXPath($dom);
-    $attribute = ($this->settings['inverted'] ?? FALSE)
-      ? 'data-ecl-tooltip-inverted'
-      : 'data-ecl-tooltip';
+    $show_close = (bool) ($this->settings['show_close_button'] ?? TRUE);
 
     // Snapshot the node list: the tree is mutated while iterating.
     $triggers = iterator_to_array($xpath->query('//span[@' . self::CONTENT_ATTRIBUTE . ']'));
 
+    $index = 0;
     $rendered = FALSE;
 
     /** @var \DOMElement $trigger */
@@ -121,9 +123,10 @@ class FilterDdcPopover extends FilterBase {
       $raw = $trigger->getAttribute(self::CONTENT_ATTRIBUTE);
       $trigger->removeAttribute(self::CONTENT_ATTRIBUTE);
 
-      // A trigger inside a link or button would put a focusable element inside
-      // another one, and ECL's guidance is explicit that tooltips do not go on
-      // interactive content.
+      // A trigger nested in a link, a button, or (once converted) inside
+      // another trigger's toggle would produce invalid, unclickable markup.
+      // Document order guarantees an enclosing trigger is converted first, so
+      // by the time we reach the inner one it already sits inside a <button>.
       if ($xpath->query('ancestor::a|ancestor::button', $trigger)->count() > 0) {
         $this->unwrap($trigger);
         continue;
@@ -131,21 +134,22 @@ class FilterDdcPopover extends FilterBase {
 
       $content = $this->toPlainText($raw);
 
-      // An empty tooltip is worse than none: it marks up a phrase that reveals
-      // nothing.
+      // An empty popover is worse than none: it renders a trigger that opens
+      // a blank box.
       if ($content === '') {
         $this->unwrap($trigger);
         continue;
       }
 
-      $this->renderTooltip($trigger, $attribute, $content);
+      $this->renderPopover($dom, $trigger, $content, $index, $show_close);
       $rendered = TRUE;
+      $index++;
     }
 
     $result->setProcessedText(Html::serialize($dom));
 
     if ($rendered) {
-      $result->setAttachments(['library' => ['eic_wysiwyg/tooltip']]);
+      $result->setAttachments(['library' => ['eic_wysiwyg/popover']]);
     }
 
     return $result;
@@ -154,17 +158,14 @@ class FilterDdcPopover extends FilterBase {
   /**
    * Reduces stored content to plain text, keeping single line breaks.
    *
-   * ECL assigns the popup content with textContent, so markup would be shown
-   * literally rather than rendered. Xss::filter() runs first so a malformed or
-   * nested tag cannot survive strip_tags().
+   * Authors write plain text; any markup that reaches here is discarded rather
+   * than rendered. Xss::filter() runs first so a malformed or nested tag
+   * cannot survive strip_tags(). Entities are decoded so that a URL's "&"
+   * is not double-encoded when it is written back out as a text node or href.
    *
-   * strip_tags() is also what repairs autop's damage: because this filter runs
-   * last, a stored newline has already been rewritten to "<br />\n" by the time
-   * it arrives, and removing the tag leaves the newline behind.
-   *
-   * Line breaks are the one piece of formatting kept, so an editor can separate
-   * a definition from a note. Everything else collapses: runs of spaces and
-   * tabs become one space, and blank lines collapse to a single break.
+   * Line breaks are kept, so an editor can separate a definition from a note.
+   * Everything else collapses: runs of spaces and tabs become one space, and
+   * blank lines collapse to a single break.
    *
    * @param string $raw
    *   The stored content.
@@ -173,7 +174,7 @@ class FilterDdcPopover extends FilterBase {
    *   Plain text with single line breaks, possibly empty.
    */
   protected function toPlainText(string $raw): string {
-    $text = strip_tags(Xss::filter($raw, []));
+    $text = Html::decodeEntities(strip_tags(Xss::filter($raw, [])));
 
     // Normalise every line-break form to "\n" first: CKEditor stores a bare
     // CR, and content saved by earlier versions of this filter may carry
@@ -189,26 +190,163 @@ class FilterDdcPopover extends FilterBase {
   }
 
   /**
-   * Turns a stored trigger into an ECL Tooltip trigger.
+   * Replaces a trigger element with the full ECL Popover structure.
    *
-   * ECL's Tooltip JS creates the popup element itself, so all that is emitted
-   * here is the trigger and its content attribute.
+   * ECL's popover.js makes no assumptions about tag names; it requires only
+   * that the container's id matches the toggle's aria-controls, and that
+   * .ecl-popover__scrollable is the container's first element child.
    *
+   * @param \DOMDocument $dom
+   *   The document being rewritten.
    * @param \DOMElement $trigger
-   *   The trigger element, rewritten in place.
-   * @param string $attribute
-   *   Either data-ecl-tooltip or data-ecl-tooltip-inverted.
+   *   The stored trigger element, replaced in place.
    * @param string $content
-   *   Plain-text tooltip content.
+   *   Plain-text popover content with single line breaks.
+   * @param int $index
+   *   The zero-based index of this popover within the text.
+   * @param bool $show_close
+   *   Whether to render the close button.
    */
-  protected function renderTooltip(\DOMElement $trigger, string $attribute, string $content): void {
-    // ECL's own inline link styling -- the default variant, no modifier.
-    $classes = array_filter(['ecl-link', $trigger->getAttribute('class')]);
-    $trigger->setAttribute('class', implode(' ', $classes));
-    $trigger->setAttribute($attribute, $content);
-    // ECL binds hover and focus. A <span> is not focusable, so without this
-    // keyboard users could never reach the content.
-    $trigger->setAttribute('tabindex', '0');
+  protected function renderPopover(\DOMDocument $dom, \DOMElement $trigger, string $content, int $index, bool $show_close): void {
+    $id = $this->buildId($trigger->textContent, $content, $index);
+
+    $root = $dom->createElement('span');
+    $root->setAttribute('class', 'ecl-popover ddc-popover');
+    $root->setAttribute('data-ecl-auto-init', 'Popover');
+
+    // No ecl-button classes: popover.scss defines no rule for
+    // .ecl-popover__toggle -- it is a behavioural hook -- and the button
+    // classes would only import padding and min-height that are wrong for a
+    // run of body text.
+    $toggle = $dom->createElement('button');
+    $toggle->setAttribute('class', 'ecl-popover__toggle ddc-popover__toggle');
+    $toggle->setAttribute('type', 'button');
+    $toggle->setAttribute('aria-controls', $id);
+    $toggle->setAttribute('aria-expanded', 'false');
+    $toggle->setAttribute('data-ecl-popover-toggle', '');
+    while ($trigger->firstChild) {
+      $toggle->appendChild($trigger->firstChild);
+    }
+
+    $container = $dom->createElement('span');
+    $container->setAttribute('id', $id);
+    $container->setAttribute('class', 'ecl-popover__container ddc-popover__container');
+    $container->setAttribute('hidden', '');
+
+    $scrollable = $dom->createElement('span');
+    $scrollable->setAttribute('class', 'ecl-popover__scrollable ddc-popover__scrollable');
+
+    if ($show_close) {
+      $scrollable->appendChild($this->createCloseButton($dom));
+    }
+
+    $body = $dom->createElement('span');
+    $body->setAttribute('class', 'ecl-popover__content ddc-popover__content');
+
+    foreach (explode("\n", $content) as $i => $line) {
+      if ($i > 0) {
+        $body->appendChild($dom->createElement('br'));
+      }
+      $this->linkify($dom, $body, $line);
+    }
+
+    $scrollable->appendChild($body);
+    $container->appendChild($scrollable);
+    $root->appendChild($toggle);
+    $root->appendChild($container);
+
+    $trigger->parentNode->replaceChild($root, $trigger);
+  }
+
+  /**
+   * Appends a line of plain text, turning http(s) URLs into links.
+   *
+   * Text and links are created as DOM nodes, so nothing in the line is ever
+   * interpreted as markup.
+   *
+   * @param \DOMDocument $dom
+   *   The document being rewritten.
+   * @param \DOMElement $parent
+   *   The node to append to.
+   * @param string $line
+   *   One line of plain text.
+   */
+  protected function linkify(\DOMDocument $dom, \DOMElement $parent, string $line): void {
+    $offset = 0;
+
+    preg_match_all(self::URL_PATTERN, $line, $matches, PREG_OFFSET_CAPTURE);
+
+    foreach ($matches[0] as [$url, $position]) {
+      // Sentence punctuation after a pasted URL belongs to the sentence. A
+      // closing parenthesis is kept only when the URL opened one itself, as
+      // Wikipedia-style URLs do.
+      $url = rtrim($url, '.,;:!?');
+      while (str_ends_with($url, ')') && substr_count($url, '(') < substr_count($url, ')')) {
+        $url = rtrim(substr($url, 0, -1), '.,;:!?');
+      }
+
+      if ($position > $offset) {
+        $parent->appendChild($dom->createTextNode(substr($line, $offset, $position - $offset)));
+      }
+
+      $link = $dom->createElement('a');
+      $link->setAttribute('href', $url);
+      $link->setAttribute('class', 'ecl-link');
+      $link->appendChild($dom->createTextNode($url));
+      $parent->appendChild($link);
+
+      $offset = $position + strlen($url);
+    }
+
+    if ($offset < strlen($line)) {
+      $parent->appendChild($dom->createTextNode(substr($line, $offset)));
+    }
+  }
+
+  /**
+   * Builds a deterministic, cache-safe DOM id for a popover.
+   *
+   * Html::getUniqueId() must not be used here. Filter output is cached per
+   * (text, format, langcode), so two independently cached fragments rendered
+   * on the same page would each restart its counter and collide.
+   *
+   * @param string $trigger_text
+   *   The trigger's text content.
+   * @param string $content
+   *   The popover content.
+   * @param int $index
+   *   The zero-based index of this popover within the text.
+   *
+   * @return string
+   *   The element id.
+   */
+  protected function buildId(string $trigger_text, string $content, int $index): string {
+    return 'ddc-popover-' . substr(hash('sha256', $trigger_text . "\0" . $content . "\0" . $index), 0, 12);
+  }
+
+  /**
+   * Creates the popover close button.
+   *
+   * Icon-free: the glyph is drawn by css/popover.css, which avoids depending
+   * on the ECL icon sprite path.
+   *
+   * @param \DOMDocument $dom
+   *   The DOM document.
+   *
+   * @return \DOMElement
+   *   The close button element.
+   */
+  protected function createCloseButton(\DOMDocument $dom): \DOMElement {
+    $button = $dom->createElement('button');
+    $button->setAttribute('class', 'ecl-popover__close ddc-popover__close');
+    $button->setAttribute('type', 'button');
+    $button->setAttribute('data-ecl-popover-close', '');
+
+    $label = $dom->createElement('span', (string) $this->t('Close'));
+    $label->setAttribute('class', 'ecl-u-sr-only');
+    $button->appendChild($label);
+
+    return $button;
   }
 
   /**

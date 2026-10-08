@@ -78,6 +78,9 @@
     },
     "drupal/views_data_export_phpspreadsheet": {
       "3503071 - Fatal error: Declaration of XlsEncoder::encode() must be compatible with EncoderInterface::encode()": "patches/views_data_export_phpspreadsheet/3503071.patch"
+    },
+    "openeuropa/oe_theme": {
+      "FilterEclTable does not add the ecl-table__caption class to <caption>": "patches/oe_theme/filter-ecl-table-caption-class.patch"
     }
   }
 }

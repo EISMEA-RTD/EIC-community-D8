@@ -1,0 +1,14 @@
+--- a/modules/oe_theme_helper/src/Plugin/Filter/FilterEclTable.php
++++ b/modules/oe_theme_helper/src/Plugin/Filter/FilterEclTable.php
+@@ -61,6 +61,11 @@
+         $table->removeAttribute('data-striped');
+       }
+ 
++      // Put ECL related classes for caption tag.
++      foreach ($xpath->query('./caption', $table) as $caption) {
++        $this->elementAddClass($caption, 'ecl-table__caption');
++      }
++
+       // Put ECL related classes for thead tag.
+       foreach ($xpath->query('./thead', $table) as $thead) {
+         $this->elementAddClass($thead, 'ecl-table__head');

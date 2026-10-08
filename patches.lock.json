@@ -1,5 +1,5 @@
 {
-    "_hash": "c18ca24167859bbbbfca64e5e20e455c1d2a199867e44c155d267ea14a433d24",
+    "_hash": "ef87e35250f325899eafdc81a16e44f4af29753543dca8ea2a1394ce0be308e9",
     "patches": {
         "drupal/core": [
             {
@@ -467,6 +467,18 @@
                 }
             }
         ],
+        "openeuropa/oe_theme": [
+            {
+                "package": "openeuropa/oe_theme",
+                "description": "FilterEclTable does not add the ecl-table__caption class to <caption>",
+                "url": "patches/oe_theme/filter-ecl-table-caption-class.patch",
+                "sha256": "a7665bb4c1830b74cc5c76f867ddcc08f4eb57d6a7bea60d86f4762148b26aee",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
         "drupal/paragraphs": [
             {
                 "package": "drupal/paragraphs",
@@ -476,18 +488,6 @@
                 "depth": 1,
                 "extra": {
                     "provenance": "dependency:drupal/paragraphs"
-                }
-            }
-        ],
-        "drupal/drupal-driver": [
-            {
-                "package": "drupal/drupal-driver",
-                "description": "allow-date-only-date-fields",
-                "url": "https://github.com/jhedstrom/DrupalDriver/commit/eaa9238c8c8e34372dc82ebe5367e6d24b5854e7.patch",
-                "sha256": "e71a351db923ef87e2c51b9c4784a243d59cb2ffa83cd01c52fe63163faf3fc1",
-                "depth": 1,
-                "extra": {
-                    "provenance": "dependency:drupal/drupal-driver"
                 }
             }
         ]
