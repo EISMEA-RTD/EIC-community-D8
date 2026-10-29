@@ -46,7 +46,6 @@ class ProcessorResearchInstitution extends DocumentProcessor {
     // the parent term names rather than the selected detailed disciplines.
     $this->mapDisciplineTopLevel($document, $group, 'field_ri_key_disciplines', 'ss_ri_key_disciplines', 'sm_ri_key_disciplines');
     $this->mapTaxonomyField($document, $group, 'field_ri_province', 'ss_ri_province', 'sm_ri_province');
-    $this->mapTaxonomyField($document, $group, 'field_ri_transparency_level', 'ss_ri_transparency_level', 'sm_ri_transparency_level');
     $this->mapTaxonomyField($document, $group, 'field_ri_is_sanctioned', 'ss_ri_is_sanctioned', 'sm_ri_is_sanctioned');
     $this->mapTaxonomyField($document, $group, 'field_ri_evidence_defense_links', 'ss_ri_evidence_defense_links', 'sm_ri_evidence_defense_links');
 

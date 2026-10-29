@@ -73,7 +73,36 @@ class CasEventSubscriber implements EventSubscriberInterface {
       CasHelper::EVENT_PRE_REGISTER => ['userPreRegister'],
       CasHelper::EVENT_PRE_LOGIN => ['userPreLogin'],
       CasHelper::EVENT_PRE_USER_LOAD => ['userPreLoad'],
+      // Priority -50: after oe_authentication's property processing (0) and
+      // before its MessengerEuLoginEventSubscriber::showUserMessage (-100),
+      // which is the only listener below us on this dispatch.
+      CasPreRegisterEvent::class => ['suppressDuplicateApprovalMessage', -50],
     ];
+  }
+
+  /**
+   * Stops oe_authentication announcing a pending account a second time.
+   *
+   * Two modules independently tell the user their account awaits approval:
+   * oe_authentication's MessengerEuLoginEventSubscriber, on this event, and
+   * cas's CasAdminApprovalRegistrationSubscriber, on
+   * ExternalAuthEvents::REGISTER. The strings differ — only the CAS one
+   * mentions the confirmation email — so Drupal's duplicate suppression does
+   * not collapse them, and the user reads the same sentence twice.
+   *
+   * We keep the CAS message, which is the fuller and more accurate of the two
+   * (CAS does send that email, via _user_mail_notify), and stop this dispatch
+   * before oe_authentication's listener runs.
+   *
+   * Note this is only safe while showUserMessage is the sole listener below
+   * our priority. If oe_authentication adds another, it would be stopped too;
+   * \Drupal::service('event_dispatcher')->getListeners() lists them.
+   *
+   * @param \Drupal\cas\Event\CasPreRegisterEvent $event
+   *   The CAS pre-register event.
+   */
+  public function suppressDuplicateApprovalMessage(CasPreRegisterEvent $event): void {
+    $event->stopPropagation();
   }
 
   /**

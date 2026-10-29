@@ -224,9 +224,13 @@ class EntityTreeWidget extends WidgetBase {
       $entities_id = array_map(function($input_topic) {
         return EntityAutocomplete::extractEntityIdFromAutocompleteInput($input_topic);
       }, $entities_id);
-      $entities = 'taxonomy_term' !== $entity_type ?
-        $this->treeManager->getTreeWidgetProperty($entity_type)->loadEntities($entities_id) :
-        Term::loadMultiple($entities_id);
+      if ('taxonomy_term' === $entity_type) {
+        $entities = Term::loadMultiple($entities_id);
+      }
+      else {
+        $properties = $this->treeManager->getTreeWidgetProperty($entity_type);
+        $entities = $properties ? $properties->loadEntities($entities_id) : [];
+      }
       $preselected_items = $this->formatPreselection($entities, $entity_type);
     } elseif (!$has_required_error) {
       $preselected_items = $this->formatPreselection($items->referencedEntities(), $entity_type);
@@ -279,15 +283,21 @@ class EntityTreeWidget extends WidgetBase {
    *   A JSON encoded string.
    */
   private function formatPreselection(array $entities, string $entity_type) {
-    if ('taxonomy_term' !== $entity_type) {
-      return $this
-        ->treeManager
-        ->getTreeWidgetProperty($entity_type)
-        ->formatPreselection($entities);
+    if ('taxonomy_term' === $entity_type) {
+      return self::formatTaxonomyPreSelection($entities);
     }
 
-    return self::formatTaxonomyPreSelection($entities);
+    // This widget declares support for every entity_reference field, but the
+    // tree manager only implements 'group' and 'user'. Any other target type
+    // has no tree properties, so return an empty preselection rather than
+    // fatally calling a method on NULL. See the "Picture" field on the user
+    // form, which references media.
+    $properties = $this->treeManager->getTreeWidgetProperty($entity_type);
+    if (!$properties) {
+      return json_encode([]);
+    }
 
+    return $properties->formatPreselection($entities);
   }
 
   /**

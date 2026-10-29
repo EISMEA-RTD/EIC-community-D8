@@ -48,7 +48,6 @@ final class ResearchInstitutionSourceType extends SourceType {
       'sm_ri_entity_type' => $this->t('Entity type', [], ['context' => 'eic_search']),
       'sm_ri_key_disciplines' => $this->t('Key disciplines', [], ['context' => 'eic_search']),
       'sm_ri_province' => $this->t('Province', [], ['context' => 'eic_search']),
-      'sm_ri_transparency_level' => $this->t('Transparency level', [], ['context' => 'eic_search']),
       'sm_ri_is_sanctioned' => $this->t('Is sanctioned entity', [], ['context' => 'eic_search']),
       'sm_ri_evidence_defense_links' => $this->t('Evidence of defense links', [], ['context' => 'eic_search']),
       'sm_ri_risk_indicators' => $this->t('Risk indicators (include)', [], ['context' => 'eic_search']),

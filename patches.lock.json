@@ -1,5 +1,5 @@
 {
-    "_hash": "ef87e35250f325899eafdc81a16e44f4af29753543dca8ea2a1394ce0be308e9",
+    "_hash": "0f81b7cac04324bb96eb96384cc8f17fa19066e6a7b18b8b6240674a1693fc57",
     "patches": {
         "drupal/core": [
             {
@@ -399,6 +399,18 @@
                 }
             }
         ],
+        "drupal/paragraphs": [
+            {
+                "package": "drupal/paragraphs",
+                "description": "2890086 - Paragraphs widgets validates fields that are not in the current form display (rerolled for paragraphs 1.23; supersedes the -65 patch shipped by oe_paragraphs, which is skipped via ignore-dependency-patches) @see https://www.drupal.org/project/paragraphs/issues/2890086",
+                "url": "https://www.drupal.org/files/issues/2026-08-03/respect-display-on-validation-2890086-67.diff",
+                "sha256": "9d27a30e516c9825bd1f2cd109c788d7c196bedbc3fe52da0ec15d9f9aa12de1",
+                "depth": 1,
+                "extra": {
+                    "provenance": "patches-file:composer.patches.json"
+                }
+            }
+        ],
         "drupal/select2": [
             {
                 "package": "drupal/select2",
@@ -476,18 +488,6 @@
                 "depth": 1,
                 "extra": {
                     "provenance": "patches-file:composer.patches.json"
-                }
-            }
-        ],
-        "drupal/paragraphs": [
-            {
-                "package": "drupal/paragraphs",
-                "description": "Paragraphs widgets validates fields that are not in the current form display @see https://www.drupal.org/project/paragraphs/issues/2890086",
-                "url": "https://www.drupal.org/files/issues/2024-08-08/respect-display-on-validation-2890086-65.patch",
-                "sha256": "2b25457a3d211d23c04ec549f571a09f77ec8d700fff096e1ed96852f6a1bc9e",
-                "depth": 1,
-                "extra": {
-                    "provenance": "dependency:drupal/paragraphs"
                 }
             }
         ]

@@ -7,7 +7,9 @@ use Drupal\Core\Cache\Cache;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Url;
+use Drupal\eic_search\Search\RiskIndicators;
 use Drupal\eic_search\Search\Sources\ResearchInstitutionSourceType;
+use Drupal\eic_user\UserHelper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -111,7 +113,10 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
       'contexts' => [
         'url.path',
         'url.query_args',
+        // The risk indicator colors depend on the trusted_user role and on
+        // being a power user, which includes user 1 whatever its roles.
         'user.roles',
+        'user.is_super_user',
       ],
       'tags' => [
         'config:search_api.index.research_institution',
@@ -124,6 +129,24 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
       array_keys($facets),
       fn($key) => !in_array($key, $exclude_keys)
     );
+
+    $rins_search = [
+      'apiUrl' => $api_url,
+      'facets' => $facets,
+      'sorts' => $sorts,
+      'settings' => $settings,
+      'translations' => $translations,
+      'currentUser' => [
+        'isAnonymous' => $this->currentUser->isAnonymous(),
+        'roles' => $this->currentUser->getRoles(),
+      ],
+    ];
+
+    // Trusted users only: everybody else gets no risk indicator data at all.
+    $risk_indicators = $this->getRiskIndicatorSettings();
+    if ($risk_indicators) {
+      $rins_search['riskIndicators'] = $risk_indicators;
+    }
 
     return [
       '#theme' => 'rins_search_overview_block',
@@ -149,20 +172,31 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
             'is_group_admin' => FALSE,
             'is_power_user' => FALSE,
           ],
-          'rinsSearch' => [
-            'apiUrl' => $api_url,
-            'facets' => $facets,
-            'sorts' => $sorts,
-            'settings' => $settings,
-            'translations' => $translations,
-            'currentUser' => [
-              'isAnonymous' => $this->currentUser->isAnonymous(),
-              'roles' => $this->currentUser->getRoles(),
-            ],
-          ],
+          'rinsSearch' => $rins_search,
         ],
       ],
     ];
+  }
+
+  /**
+   * Gets the risk indicator color modes the current user may receive.
+   *
+   * Same rule as the restricted community content in GroupAccessContent: a
+   * logged-in user with the trusted_user role, or a power user.
+   *
+   * @return string[]
+   *   The ECL color modes keyed by term name, or an empty array when the
+   *   current user is not trusted.
+   */
+  private function getRiskIndicatorSettings(): array {
+    if ($this->currentUser->isAnonymous()) {
+      return [];
+    }
+
+    $is_trusted = in_array(UserHelper::ROLE_TRUSTED_USER, $this->currentUser->getRoles(), TRUE)
+      || UserHelper::isPowerUser($this->currentUser);
+
+    return $is_trusted ? RiskIndicators::colorModesByName() : [];
   }
 
   /**
@@ -190,7 +224,6 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
       'sm_ri_entity_type' => $this->t('Entity type', [], ['context' => 'eic_search']),
       'sm_ri_key_disciplines' => $this->t('Key disciplines', [], ['context' => 'eic_search']),
       'sm_ri_province' => $this->t('Province', [], ['context' => 'eic_search']),
-      'sm_ri_transparency_level' => $this->t('Transparency level', [], ['context' => 'eic_search']),
       'sm_ri_is_sanctioned' => $this->t('Is sanctioned entity', [], ['context' => 'eic_search']),
       'sm_ri_evidence_defense_links' => $this->t('Evidence of defense links', [], ['context' => 'eic_search']),
       'sm_ri_risk_indicators' => $this->t('Risk indicators (include)', [], ['context' => 'eic_search']),

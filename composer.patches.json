@@ -64,6 +64,9 @@
     "drupal/menu_trail_by_path": {
       "2914746 - Fatal error after installing the module": "https://www.drupal.org/files/issues/2025-10-15/2914746-35.patch"
     },
+    "drupal/paragraphs": {
+      "2890086 - Paragraphs widgets validates fields that are not in the current form display (rerolled for paragraphs 1.23; supersedes the -65 patch shipped by oe_paragraphs, which is skipped via ignore-dependency-patches) @see https://www.drupal.org/project/paragraphs/issues/2890086": "https://www.drupal.org/files/issues/2026-08-03/respect-display-on-validation-2890086-67.diff"
+    },
     "drupal/publication_date": {},
     "drupal/select2": {
       "3551995 - Claro theme styling issues in 2.0.0": "https://www.drupal.org/files/issues/2026-01-21/select2-3551995-claro_styling-5.patch"
