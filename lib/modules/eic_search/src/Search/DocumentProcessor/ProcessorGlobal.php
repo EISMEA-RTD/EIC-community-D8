@@ -210,6 +210,12 @@ class ProcessorGlobal extends DocumentProcessor {
         $document->addField('its_global_group_parent_id', $group_id);
         $group = Group::load($group_id);
         if ($group instanceof GroupInterface) {
+          // Prefer the entity's own label over the indexed one. A bundle class
+          // may compose a title that is not what sits in the label column -
+          // research institutions show their English and Chinese names
+          // together - and the Explorer listing has to match the page title.
+          $title = $group->label() ?: $title;
+
           $lastActivityTime = $this->groupStatisticsHelper->getGroupLatestActivity(
             $group
           );
