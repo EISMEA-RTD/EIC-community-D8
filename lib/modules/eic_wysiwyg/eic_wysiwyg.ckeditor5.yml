@@ -46,3 +46,21 @@ eic_wysiwyg_table_width:
     conditions:
       plugins:
         - ckeditor5_table
+
+# Stores the core horizontal line as <hr class="ecl-separator">, the ECL
+# separator. Ships no toolbar button of its own: like the table add-on above it
+# is enabled automatically on every text format that has the core Horizontal
+# line button. Declaring the element is what makes core extend filter_html's
+# allowed_html with the class, so filter_html does not strip it on output.
+eic_wysiwyg_separator:
+  ckeditor5:
+    plugins:
+      - ddcSeparator.DdcSeparator
+  drupal:
+    label: ECL separator
+    library: eic_wysiwyg/ckeditor5.separator
+    elements:
+      - <hr class="ecl-separator">
+    conditions:
+      plugins:
+        - ckeditor5_horizontalLine

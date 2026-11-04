@@ -13,6 +13,10 @@ namespace Drupal\eic_search\Search;
  * an ECL color mode here rather than a custom color: the class
  * "ecl-color-mode--{color_mode}" on an ".ecl-tag" tints it with no extra CSS.
  * The available modes are listed in @ecl/theme-ec (maps/color.scss).
+ *
+ * And it carries the icon drawn on the left of the tag: the file name, without
+ * extension, of an SVG in ddc_theme's images/risk-indicators folder. The
+ * theme's risk-pill.css turns "ddc-risk-pill--{icon}" into that image.
  */
 final class RiskIndicators {
 
@@ -46,31 +50,37 @@ final class RiskIndicators {
       'name' => 'Military / Defense',
       'abbreviation' => 'MIL',
       'color_mode' => 'red-tomato',
+      'icon' => 'military',
     ],
     self::HUMAN_RIGHTS => [
       'name' => 'Human rights findings',
       'abbreviation' => 'HR',
       'color_mode' => 'purple-violet',
+      'icon' => 'human-rights',
     ],
     self::SECURITY_INTELLIGENCE => [
       'name' => 'Security and intelligence',
       'abbreviation' => 'SEC',
       'color_mode' => 'yellow-gold',
+      'icon' => 'security',
     ],
     self::COMPETITIVENESS_IP => [
       'name' => 'Competitiveness and IP outflow',
       'abbreviation' => 'IP',
       'color_mode' => 'blue-navy',
+      'icon' => 'competitiveness',
     ],
     self::INDIRECT_COMPLIANCE => [
       'name' => 'Indirect compliance risks',
       'abbreviation' => 'COMP',
       'color_mode' => 'green-pine',
+      'icon' => 'compliance',
     ],
     self::OFFICIAL_LISTINGS => [
       'name' => 'Official listings and restrictions',
       'abbreviation' => 'LIST',
       'color_mode' => 'warm-grey',
+      'icon' => 'listings',
     ],
   ];
 

@@ -1,0 +1,19 @@
+/**
+ * @file
+ * The horizontal line in the CKEditor 5 editing view, drawn as an ECL separator.
+ *
+ * DdcSeparator puts .ecl-separator on the <hr>, and ECL's stylesheet (loaded
+ * into the editor through the theme's ckeditor5-stylesheets) defines it as a
+ * 1px top border with no margin. CKEditor's own content styles style a bare
+ * `.ck-content hr` as a 4px grey bar with a 15px margin, and that selector is
+ * more specific than `.ecl-separator`, so it wins unless it is undone here.
+ *
+ * Scoped to .ck-content so nothing outside the editing area is affected.
+ */
+.ck-content hr.ecl-separator {
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-block-start: 1px solid var(--cm-border-neutral, currentColor);
+  background: none;
+}
