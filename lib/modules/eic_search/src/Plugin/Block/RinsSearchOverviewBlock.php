@@ -224,8 +224,7 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
       'sm_ri_entity_type' => $this->t('Entity type', [], ['context' => 'eic_search']),
       'sm_ri_key_disciplines' => $this->t('Key disciplines', [], ['context' => 'eic_search']),
       'sm_ri_province' => $this->t('Province', [], ['context' => 'eic_search']),
-      'sm_ri_is_sanctioned' => $this->t('Is sanctioned entity', [], ['context' => 'eic_search']),
-      'sm_ri_evidence_defense_links' => $this->t('Evidence of defense links', [], ['context' => 'eic_search']),
+      'sm_ri_risk_level' => $this->t('Risk level', [], ['context' => 'eic_search']),
       'sm_ri_risk_indicators' => $this->t('Risk indicators (include)', [], ['context' => 'eic_search']),
       'sm_ri_risk_indicators_exclude' => $this->t('Risk indicators (exclude)', [], ['context' => 'eic_search']),
       // Table header translations.

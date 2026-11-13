@@ -46,14 +46,17 @@ class ProcessorResearchInstitution extends DocumentProcessor {
     // the parent term names rather than the selected detailed disciplines.
     $this->mapDisciplineTopLevel($document, $group, 'field_ri_key_disciplines', 'ss_ri_key_disciplines', 'sm_ri_key_disciplines');
     $this->mapTaxonomyField($document, $group, 'field_ri_province', 'ss_ri_province', 'sm_ri_province');
-    $this->mapTaxonomyField($document, $group, 'field_ri_is_sanctioned', 'ss_ri_is_sanctioned', 'sm_ri_is_sanctioned');
-    $this->mapTaxonomyField($document, $group, 'field_ri_evidence_defense_links', 'ss_ri_evidence_defense_links', 'sm_ri_evidence_defense_links');
 
     // Set URL for linking.
     $url = $group->toUrl()->toString();
     $document->setField('ss_url', $url);
 
     $this->mapTaxonomyField($document, $group, 'field_ri_risk_indicators', 'ss_ri_risk_indicators', 'sm_ri_risk_indicators');
+
+    // Let other modules add their own fields to the document. The risk level
+    // ("N - name") is supplied this way by research_institution_admin, which
+    // depends on this module and not the other way round.
+    \Drupal::moduleHandler()->alter('eic_search_research_institution_document', $document, $group);
   }
 
   /**

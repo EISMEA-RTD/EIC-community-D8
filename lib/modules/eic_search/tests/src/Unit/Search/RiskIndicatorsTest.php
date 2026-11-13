@@ -64,7 +64,7 @@ class RiskIndicatorsTest extends UnitTestCase {
   public function testEveryUuidConstantIsAUniqueV4Uuid(): void {
     $uuids = $this->uuidConstants();
 
-    $this->assertCount(6, $uuids);
+    $this->assertCount(4, $uuids);
     foreach ($uuids as $name => $uuid) {
       $this->assertMatchesRegularExpression(self::UUID_PATTERN, $uuid, "Constant {$name} is not a v4 UUID.");
     }
@@ -103,20 +103,20 @@ class RiskIndicatorsTest extends UnitTestCase {
    */
   public function testTermsFollowTheEditorialOrder(): void {
     $this->assertSame([
-      'Military / Defense',
-      'Human rights findings',
+      'Military and defence',
+      'Human rights',
       'Security and intelligence',
-      'Competitiveness and IP outflow',
-      'Indirect compliance risks',
-      'Official listings and restrictions',
+      'Official listings and compliance',
     ], array_column(RiskIndicators::TERMS, 'name'));
   }
 
   /**
-   * The terms with a design color keep the ECL color mode nearest to it.
+   * Each term keeps the name, abbreviation and ECL color mode agreed for it.
    *
-   * The design colors were sampled from the mock-ups (#FA9B8E, #F8C622,
-   * #BC8FFB, #E3D4C1); each maps to the closest ECL palette family.
+   * All four color modes are explicit choices. The first three are the ECL
+   * palette families nearest to the design colors sampled from the mock-ups
+   * (#FA9B8E, #F8C622, #BC8FFB). The fourth, green-pine, is deliberately not a
+   * design color: it was chosen to contrast with purple.
    *
    * @dataProvider givenTermProvider
    */
@@ -136,10 +136,10 @@ class RiskIndicatorsTest extends UnitTestCase {
    */
   public static function givenTermProvider(): array {
     return [
-      'military' => ['MILITARY_DEFENSE', 'Military / Defense', 'MIL', 'red-tomato'],
-      'human rights' => ['HUMAN_RIGHTS', 'Human rights findings', 'HR', 'purple-violet'],
+      'military' => ['MILITARY_DEFENSE', 'Military and defence', 'MIL', 'red-tomato'],
+      'human rights' => ['HUMAN_RIGHTS', 'Human rights', 'HR', 'purple-violet'],
       'security' => ['SECURITY_INTELLIGENCE', 'Security and intelligence', 'SEC', 'yellow-gold'],
-      'listings' => ['OFFICIAL_LISTINGS', 'Official listings and restrictions', 'LIST', 'warm-grey'],
+      'listings' => ['OFFICIAL_LISTINGS', 'Official listings and compliance', 'LIST', 'green-pine'],
     ];
   }
 

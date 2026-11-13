@@ -1,0 +1,65 @@
+/**
+ * @file
+ * Anchors in the CKEditor 5 editing view: an anchor icon plus the anchor's
+ * name, on a yellow background.
+ *
+ * Registered through the theme's ckeditor5-stylesheets (ddc_theme.info.yml),
+ * so it loads as an ordinary stylesheet on every page that has an editor.
+ * Every rule is therefore scoped to .ck-content, and none of it reaches the
+ * front end.
+ *
+ * The anchor_link plugin (vardot/ckeditor5-anchor-drupal) renders two forms in
+ * the editing view:
+ *
+ *  - Wrapped text, <a id="name" class="ck-anchor">text</a>. The plugin's own
+ *    CSS gives it a blue colour and a flag icon as a left background image.
+ *  - An empty anchor, <span class="ck-anchor-placeholder" data-anchor-id="name">,
+ *    a widget whose ::before draws "[INVISIBLE ANCHOR: name]".
+ *
+ * Both are given the same marker: ::before holds the name and carries the icon
+ * as its left background image. The selectors outrank the plugin's (.ck-content
+ * adds a class), so the plugin's own rules are overridden regardless of the
+ * order the stylesheets load in.
+ *
+ * Wrapped text is matched as a[id]:not([href]) rather than by .ck-anchor, so
+ * a link that also carries an id (<a id href>), which the editor renders as
+ * two nested elements, is never mistaken for an anchor.
+ *
+ * The icon is images/chain.svg: ECL's "chain" glyph, the same icon the
+ * front-end link to an anchor shows (there Webtools paints it from the
+ * wt-icon--chain class; ECL 5 ships no SVG files, so this copy is taken from
+ * the ECL 4 sprite). Loaded as a background image its currentColor renders
+ * as black, which reads well on the yellow.
+ */
+.ck-content {
+  --ddc-anchor-editor-background: #ffe05e; /* ECL yellow-gold, --cm-surface-0 */
+}
+
+/* The marker's background and box, both forms. */
+.ck-content a[id]:not([href]),
+.ck-content .ck-anchor-placeholder {
+  padding: 0 0.25em;
+  border-radius: 2px;
+  background: var(--ddc-anchor-editor-background);
+  color: inherit;
+  cursor: auto;
+}
+
+/* The icon and the name. */
+.ck-content a[id]:not([href])::before,
+.ck-content .ck-anchor-placeholder::before {
+  content: attr(id);
+  display: inline-block;
+  margin-inline-end: 0.35em;
+  padding-inline-start: 1.35em;
+  background: url("../images/chain.svg") no-repeat left center / 1em 1em;
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* The empty placeholder keeps its name in data-anchor-id, not in id. */
+.ck-content .ck-anchor-placeholder::before {
+  content: attr(data-anchor-id);
+  margin-inline-end: 0;
+}

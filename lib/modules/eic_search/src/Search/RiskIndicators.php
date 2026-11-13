@@ -31,10 +31,6 @@ final class RiskIndicators {
 
   public const SECURITY_INTELLIGENCE = '4e496d12-3691-49bf-8ebe-b932c7748fdf';
 
-  public const COMPETITIVENESS_IP = 'a4f14548-97e7-42cf-a775-ccf673751951';
-
-  public const INDIRECT_COMPLIANCE = 'b343f408-d50f-4b8d-bbfe-11c2f1b1797e';
-
   public const OFFICIAL_LISTINGS = '3c9a2dbd-a7c6-48e8-aec3-91b695c19378';
 
   /**
@@ -42,18 +38,18 @@ final class RiskIndicators {
    *
    * The ECL color mode of each term is the closest ECL palette family to the
    * design color (Military: red-tomato, Human rights: purple-violet, Security:
-   * yellow-gold, Listings: warm-grey). Competitiveness and Indirect compliance
-   * have no design color yet; their modes are placeholders.
+   * yellow-gold). The fourth, Official listings and compliance, has no design
+   * color: its mode is green-pine, chosen for contrast with purple.
    */
   public const TERMS = [
     self::MILITARY_DEFENSE => [
-      'name' => 'Military / Defense',
+      'name' => 'Military and defence',
       'abbreviation' => 'MIL',
       'color_mode' => 'red-tomato',
       'icon' => 'military',
     ],
     self::HUMAN_RIGHTS => [
-      'name' => 'Human rights findings',
+      'name' => 'Human rights',
       'abbreviation' => 'HR',
       'color_mode' => 'purple-violet',
       'icon' => 'human-rights',
@@ -64,22 +60,10 @@ final class RiskIndicators {
       'color_mode' => 'yellow-gold',
       'icon' => 'security',
     ],
-    self::COMPETITIVENESS_IP => [
-      'name' => 'Competitiveness and IP outflow',
-      'abbreviation' => 'IP',
-      'color_mode' => 'blue-navy',
-      'icon' => 'competitiveness',
-    ],
-    self::INDIRECT_COMPLIANCE => [
-      'name' => 'Indirect compliance risks',
-      'abbreviation' => 'COMP',
-      'color_mode' => 'green-pine',
-      'icon' => 'compliance',
-    ],
     self::OFFICIAL_LISTINGS => [
-      'name' => 'Official listings and restrictions',
+      'name' => 'Official listings and compliance',
       'abbreviation' => 'LIST',
-      'color_mode' => 'warm-grey',
+      'color_mode' => 'green-pine',
       'icon' => 'listings',
     ],
   ];
