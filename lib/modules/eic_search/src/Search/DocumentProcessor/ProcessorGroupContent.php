@@ -2,9 +2,8 @@
 
 namespace Drupal\eic_search\Search\DocumentProcessor;
 
-use Drupal\eic_stakeholder\Service\StakeholderManager;
-use Drupal\group\Entity\GroupContent;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationship;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Solarium\QueryType\Update\Query\Document;
 
 /**
@@ -24,19 +23,9 @@ class ProcessorGroupContent extends DocumentProcessor {
     $group_is_published = TRUE;
     $group_type = '';
     $datasource = $fields['ss_search_api_datasource'];
+    $group_content_ids = [];
 
     switch ($datasource) {
-      case 'entity:stakeholder':
-        $id = $fields['its_stakeholder_id'];
-
-        $group_type_conditions = StakeholderManager::defineGroupContentType('project');
-        $group_content_ids = \Drupal::entityQuery('group_content')
-          ->accessCheck(FALSE)
-          ->condition('entity_id', $id)
-          ->range(0, 1)
-          ->condition('type', $group_type_conditions, 'IN')
-          ->execute();
-        break;
       case 'entity:node':
         $nid = $fields['its_content_nid'];
 
@@ -50,8 +39,8 @@ class ProcessorGroupContent extends DocumentProcessor {
     }
 
     if (!empty($group_content_ids)) {
-      $group_content = GroupContent::load(reset($group_content_ids));
-      if ($group_content instanceof GroupContentInterface) {
+      $group_content = GroupRelationship::load(reset($group_content_ids));
+      if ($group_content instanceof GroupRelationshipInterface) {
         $group_entity = $group_content->getGroup();
         $group_parent_label = $group_entity->label();
         $group_parent_url = $group_entity->toUrl()->toString();
@@ -59,11 +48,6 @@ class ProcessorGroupContent extends DocumentProcessor {
         $group_is_published = $group_entity->isPublished();
         $group_type = $group_entity->getGroupType()->id();
       }
-    }
-
-    // Set the stakeholder group ID.
-    if (array_key_exists('its_stakeholder__group_content__entity_id_gid', $fields)) {
-      $this->addOrUpdateDocumentField($document, 'its_stakeholder__group_content__entity_id_gid', $fields, $group_parent_id);
     }
 
     $this->addOrUpdateDocumentField($document, 'ss_global_group_parent_label', $fields, $group_parent_label);
@@ -78,6 +62,7 @@ class ProcessorGroupContent extends DocumentProcessor {
    */
   public function supports(array $fields): bool {
     $datasource = $fields['ss_search_api_datasource'];
+    $group_content_ids = [];
     return $datasource !== 'entity:group' && $datasource !== 'entity:message';
   }
 

@@ -53,6 +53,10 @@ eic_user.my_settings:
     _title: 'My settings'
   requirements:
     _user_is_logged_in: 'TRUE'
+    # Notifications are disabled on this project: deny everyone, including
+    # administrators. Keeping the route defined (rather than deleting it) means
+    # Url::fromRoute() callers still resolve instead of throwing.
+    _access: 'FALSE'
 
 eic_user.toggle_notification_settings:
   path: '/api/notification/{notification_type}/update'
@@ -63,6 +67,10 @@ eic_user.toggle_notification_settings:
   requirements:
     notification_type: 'interest|comments'
     _user_is_logged_in: 'TRUE'
+    # Notifications are disabled on this project: deny everyone, including
+    # administrators. Keeping the route defined (rather than deleting it) means
+    # Url::fromRoute() callers still resolve instead of throwing.
+    _access: 'FALSE'
 
 eic_user.toggle_follow_flag:
   path: '/api/notification/{notification_type}/{flagging}/update'
@@ -74,6 +82,10 @@ eic_user.toggle_follow_flag:
     notification_type: 'groups|events|organisations'
     _custom_access: '\Drupal\eic_user\Controller\MySettingsController::access'
     flagging: \d+
+    # Notifications are disabled on this project: deny everyone, including
+    # administrators. Keeping the route defined (rather than deleting it) means
+    # Url::fromRoute() callers still resolve instead of throwing.
+    _access: 'FALSE'
   options:
     parameters:
       flagging:
@@ -88,6 +100,10 @@ eic_user.unsubscribe_follow_flag:
     notification_type: 'groups|events|organisations'
     _custom_access: '\Drupal\eic_user\Controller\MySettingsController::access'
     flagging: \d+
+    # Notifications are disabled on this project: deny everyone, including
+    # administrators. Keeping the route defined (rather than deleting it) means
+    # Url::fromRoute() callers still resolve instead of throwing.
+    _access: 'FALSE'
   options:
     parameters:
       flagging:
@@ -102,6 +118,10 @@ eic_user.get_notification_settings:
   requirements:
     notification_type: 'groups|events|organisations'
     _user_is_logged_in: 'TRUE'
+    # Notifications are disabled on this project: deny everyone, including
+    # administrators. Keeping the route defined (rather than deleting it) means
+    # Url::fromRoute() callers still resolve instead of throwing.
+    _access: 'FALSE'
 
 eic_user.anonymous.my_settings:
   path: '/user/settings'
@@ -109,3 +129,7 @@ eic_user.anonymous.my_settings:
     _controller: '\Drupal\eic_user\Controller\UserMySettingsRedirectController::build'
   requirements:
     _user_is_logged_in: 'TRUE'
+    # Notifications are disabled on this project: deny everyone, including
+    # administrators. Keeping the route defined (rather than deleting it) means
+    # Url::fromRoute() callers still resolve instead of throwing.
+    _access: 'FALSE'

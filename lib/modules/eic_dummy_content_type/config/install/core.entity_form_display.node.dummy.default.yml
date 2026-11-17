@@ -36,7 +36,6 @@ dependencies:
     - path
     - publication_date
     - scheduler
-    - scheduler_content_moderation_integration
     - social_link_field
     - text
     - workflow_buttons
@@ -321,7 +320,8 @@ content:
     type: address_default
     weight: 20
     region: content
-    settings: {  }
+    settings:
+      wrapper_type: details
     third_party_settings: {  }
   field_number_integer:
     type: number
@@ -445,7 +445,7 @@ content:
     settings: {  }
     third_party_settings: {  }
   publish_state:
-    type: scheduler_moderation
+    type: options_select
     weight: 13
     region: content
     settings: {  }
@@ -500,7 +500,7 @@ content:
     settings: {  }
     third_party_settings: {  }
   unpublish_state:
-    type: scheduler_moderation
+    type: options_select
     weight: 14
     region: content
     settings: {  }

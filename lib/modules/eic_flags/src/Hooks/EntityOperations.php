@@ -398,7 +398,7 @@ class EntityOperations implements ContainerInjectionInterface {
 
       case 'group_content':
         // We skip group_content entities that are not group_membership.
-        if ($entity->getGroupContentType()->getContentPluginId() !== 'group_membership') {
+        if ($entity->getRelationshipType()->getPluginId() !== 'group_membership') {
           break;
         }
 

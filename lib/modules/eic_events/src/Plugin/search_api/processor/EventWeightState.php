@@ -3,7 +3,7 @@
 namespace Drupal\eic_events\Plugin\search_api\processor;
 
 use Drupal\eic_events\Constants\Event;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\node\NodeInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
@@ -68,11 +68,11 @@ class EventWeightState extends ProcessorPluginBase {
       $datasourceId === 'entity:group' ||
       $datasourceId === 'entity:group_content'
     ) {
-      /** @var \Drupal\node\NodeInterface|\Drupal\group\Entity\GroupInterface|\Drupal\group\Entity\GroupContentInterface $entity */
+      /** @var \Drupal\node\NodeInterface|\Drupal\group\Entity\GroupInterface|\Drupal\group\Entity\GroupRelationshipInterface $entity */
       $entity = $item->getOriginalObject()->getValue();
 
       // We add the event state weight to the event group membership.
-      if (($entity instanceof GroupContentInterface && 'event-group_membership' === $entity->bundle())) {
+      if (($entity instanceof GroupRelationshipInterface && 'event-group_membership' === $entity->bundle())) {
         $entity = $entity->getGroup();
       }
 

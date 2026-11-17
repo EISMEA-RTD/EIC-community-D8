@@ -16,7 +16,7 @@ use Drupal\eic_group_statistics\GroupStatisticsStorageInterface;
 use Drupal\eic_group_statistics\GroupStatisticTypes;
 use Drupal\eic_search\Service\SolrDocumentProcessor;
 use Drupal\entity_usage\EntityUsageInterface;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -158,15 +158,15 @@ class EntityOperations implements ContainerInjectionInterface {
   /**
    * Implements hook_ENTITY_TYPE_insert() for group_content entities.
    *
-   * @param \Drupal\group\Entity\GroupContentInterface $entity
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $entity
    *   The group content entity object.
    */
-  public function groupContentInsert(GroupContentInterface $entity) {
+  public function groupContentInsert(GroupRelationshipInterface $entity) {
     $group = $entity->getGroup();
 
     $re_index = TRUE;
 
-    switch ($entity->getContentPlugin()->getPluginId()) {
+    switch ($entity->getPlugin()->getPluginId()) {
       case "group_membership":
         $this->solrDocumentProcessor->reIndexEntities([$entity->getGroup(), $entity->getEntity()]);
         // Increments number of members in the group statistics.
@@ -178,7 +178,7 @@ class EntityOperations implements ContainerInjectionInterface {
       case "group_node:event":
       case "group_node:gallery":
       case "group_node:wiki_page":
-        if ('group_node:event' === $entity->getContentPlugin()->getPluginId()) {
+        if ('group_node:event' === $entity->getPlugin()->getPluginId()) {
           $event_count = $this->groupStatisticsStorage->calculateGroupEventsStatistics($group);
           $this->groupStatisticsStorage->increment($group, GroupStatisticTypes::STAT_TYPE_EVENTS, $event_count);
         }
@@ -209,14 +209,14 @@ class EntityOperations implements ContainerInjectionInterface {
   /**
    * Implements hook_ENTITY_TYPE_delete() for group_content entities.
    *
-   * @param \Drupal\group\Entity\GroupContentInterface $entity
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $entity
    *   The group content entity object.
    */
-  public function groupContentDelete(GroupContentInterface $entity) {
+  public function groupContentDelete(GroupRelationshipInterface $entity) {
     $group = $entity->getGroup();
     $re_index = TRUE;
 
-    switch ($entity->getContentPlugin()->getPluginId()) {
+    switch ($entity->getPlugin()->getPluginId()) {
       case "group_membership":
         // Decrements number of members in the group statistics.
         $this->groupStatisticsStorage->decrement($group, GroupStatisticTypes::STAT_TYPE_MEMBERS);
@@ -246,10 +246,10 @@ class EntityOperations implements ContainerInjectionInterface {
    *
    * @param \Drupal\node\NodeInterface $entity
    *   The node entity object.
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The group content entity object that relates to the node.
    */
-  public function groupContentNodePreDelete(NodeInterface $entity, GroupContentInterface $group_content) {
+  public function groupContentNodePreDelete(NodeInterface $entity, GroupRelationshipInterface $group_content) {
     $group = $group_content->getGroup();
 
     if (!$this->canUpdateGroupStatistics($entity, self::GROUP_FILE_STATISTICS_DELETE_OPERATION)) {
@@ -304,10 +304,10 @@ class EntityOperations implements ContainerInjectionInterface {
    *
    * @param \Drupal\node\NodeInterface $entity
    *   The node entity object.
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The group content entity object that relates to the node.
    */
-  public function groupContentNodePreSave(NodeInterface $entity, GroupContentInterface $group_content) {
+  public function groupContentNodePreSave(NodeInterface $entity, GroupRelationshipInterface $group_content) {
     $group = $group_content->getGroup();
     /** @var \Drupal\node\NodeInterface $original_entity */
     $original_entity = $entity->original;
@@ -437,7 +437,7 @@ class EntityOperations implements ContainerInjectionInterface {
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
    *   The node entity object.
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The group content entity object that relates to the node.
    * @param string $operation
    *   The operation type: "create", "update" or "delete".
@@ -447,7 +447,7 @@ class EntityOperations implements ContainerInjectionInterface {
    */
   private function updateGroupFileStatistics(
     EntityInterface $entity,
-    GroupContentInterface $group_content,
+    GroupRelationshipInterface $group_content,
     $operation = self::GROUP_FILE_STATISTICS_CREATE_OPERATION
   ) {
     $group = $group_content->getGroup();

@@ -1,0 +1,22 @@
+diff --git a/src/Controller/FragmentController.php b/src/Controller/FragmentController.php
+index 6354687..5b9b9e3 100644
+--- a/src/Controller/FragmentController.php
++++ b/src/Controller/FragmentController.php
+@@ -74,7 +74,7 @@ class FragmentController extends ControllerBase implements ContainerInjectionInt
+    */
+   public function revisionShow($fragment_revision) {
+     $fragment = $this->loadFragmentRevision($fragment_revision);
+-    $view_builder = $this->entityTypeManager->getViewBuilder('fragment');
++    $view_builder = $this->entityTypeManager()->getViewBuilder('fragment');
+ 
+     return $view_builder->view($fragment);
+   }
+@@ -327,7 +327,7 @@ class FragmentController extends ControllerBase implements ContainerInjectionInt
+    */
+   public function loadFragmentRevision(int $fragment_revision): FragmentInterface {
+     /** @var \Drupal\Core\Entity\RevisionableStorageInterface $fragmentStorage */
+-    $fragmentStorage = $this->entityTypeManager->getStorage('fragment');
++    $fragmentStorage = $this->entityTypeManager()->getStorage('fragment');
+     $fragmentRevision = $fragmentStorage->loadRevision($fragment_revision);
+ 
+     assert($fragmentRevision instanceof FragmentInterface);

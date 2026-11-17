@@ -4,6 +4,7 @@ namespace Drupal\eic_projects\Plugin\QueueWorker;
 
 use Drupal\Core\Archiver\Zip;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\DelayedRequeueException;
@@ -11,6 +12,8 @@ use Drupal\Core\Queue\QueueWorkerBase;
 use Drupal\Core\Queue\RequeueException;
 use Drupal\eic_projects\CordisExtractionService;
 use Drupal\file\FileInterface;
+use Drupal\file\FileRepositoryInterface;
+use GuzzleHttp\ClientInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -33,6 +36,10 @@ class CordisExtractionWorker extends QueueWorkerBase implements ContainerFactory
 
   private LoggerInterface $logger;
 
+  private ClientInterface $httpClient;
+
+  private FileRepositoryInterface $fileRepository;
+
   /**
    * Main constructor.
    *
@@ -43,12 +50,14 @@ class CordisExtractionWorker extends QueueWorkerBase implements ContainerFactory
    * @param mixed $plugin_definition
    *   The plugin definition.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, $cordisExtractionService, $entityTypeManager, $fileSystem, $logger) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, $cordisExtractionService, $entityTypeManager, $fileSystem, $logger, $httpClient, $fileRepository) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->cordisExtractionService = $cordisExtractionService;
     $this->entityTypeManager = $entityTypeManager;
     $this->fileSystem = $fileSystem;
     $this->logger = $logger;
+    $this->httpClient = $httpClient;
+    $this->fileRepository = $fileRepository;
   }
 
 
@@ -61,6 +70,8 @@ class CordisExtractionWorker extends QueueWorkerBase implements ContainerFactory
       $container->get('entity_type.manager'),
       $container->get('file_system'),
       $container->get('logger.factory')->get('eic_projects'),
+      $container->get('http_client'),
+      $container->get('file.repository'),
     );
   }
 
@@ -100,7 +111,10 @@ class CordisExtractionWorker extends QueueWorkerBase implements ContainerFactory
                     $this->fileSystem->prepareDirectory($cordis_xml_directory_path, FileSystemInterface::CREATE_DIRECTORY);
                   }
 
-                  $extr_file = system_retrieve_file($status['destinationFileUri'], destination: $cordis_xml_directory_path, managed: TRUE);
+                  // Replaces system_retrieve_file(), removed in Drupal 11
+                  // with no replacement: fetch the file and save it as a
+                  // managed file, as the old $managed = TRUE did.
+                  $extr_file = $this->retrieveManagedFile($status['destinationFileUri'], $cordis_xml_directory_path);
                   if ($extr_file instanceof FileInterface) {
                     // Download successful.
                     $extraction_entity
@@ -151,5 +165,40 @@ class CordisExtractionWorker extends QueueWorkerBase implements ContainerFactory
     }
   }
 
+  /**
+   * Downloads a URL into a directory and saves it as a managed file.
+   *
+   * Replaces system_retrieve_file(), which was removed in Drupal 11 without a
+   * replacement. Mirrors its $managed = TRUE behaviour: the file is written
+   * into $directory under the basename taken from the URL, and a saved file
+   * entity is returned.
+   *
+   * @param string $url
+   *   The URL to download.
+   * @param string $directory
+   *   The destination stream wrapper directory.
+   *
+   * @return \Drupal\file\FileInterface|false
+   *   The managed file, or FALSE when the download or write failed.
+   */
+  private function retrieveManagedFile(string $url, string $directory) {
+    $filename = $this->fileSystem->basename((string) parse_url($url, PHP_URL_PATH));
+    if ($filename === '') {
+      $this->logger->error('Could not derive a filename from @url.', ['@url' => $url]);
+      return FALSE;
+    }
+
+    try {
+      $data = (string) $this->httpClient->request('GET', $url)->getBody();
+      return $this->fileRepository->writeData($data, $directory . '/' . $filename, FileExists::Replace);
+    }
+    catch (\Exception $e) {
+      $this->logger->error('Failed to retrieve @url: @message', [
+        '@url' => $url,
+        '@message' => $e->getMessage(),
+      ]);
+      return FALSE;
+    }
+  }
 
 }

@@ -1,0 +1,48 @@
+# Schema for the configuration of the eic_content module.
+
+field.widget.settings.entity_tree:
+  type: mapping
+  label: 'Entity tree widget settings'
+  mapping:
+    match_top_level_limit:
+      type: integer
+      label: 'Number of top level items to match, 0 for no limit'
+    items_to_load:
+      type: integer
+      label: 'Number of items to load per request'
+    auto_select_parents:
+      type: boolean
+      label: 'Automatically select parent items'
+    disable_top_choices:
+      type: boolean
+      label: 'Disable selection of top level items'
+    load_all:
+      type: boolean
+      label: 'Load the whole tree at once'
+    ignore_current_user:
+      type: boolean
+      label: 'Exclude the current user from the results'
+    target_bundles:
+      type: sequence
+      label: 'Selectable bundles, empty for all'
+      sequence:
+        type: string
+        label: 'Bundle'
+    is_required:
+      type: boolean
+      label: 'Required'
+    can_create_tag:
+      type: boolean
+      label: 'Allow creating new terms'
+    search_label:
+      type: label
+      label: 'Search label'
+    search_placeholder:
+      type: label
+      label: 'Search placeholder'
+    selected_terms_label:
+      type: label
+      label: 'Selected items label'
+    has_error:
+      type: integer
+      label: 'Whether the widget is rendered in an error state'

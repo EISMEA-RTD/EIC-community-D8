@@ -10,7 +10,6 @@
  * - highlighted_comment: ID of highlighted comment
  * - contributors: Array of contributor data
  * - no_container: Boolean to skip container wrapper
- * - ckeditor_js_settings: CKEditor settings for the comment form
  */
 #}
 {{ attach_library('eic_community/react-comments-discussion') }}
@@ -22,7 +21,7 @@
         <div class="{{ no_container ? '' : 'ecl-container' }}">
           <div class="ecl-editorial-article__wrapper">
             <div class="ecl-editorial-article__content">
-              <div id="comments-discussion" data-ckeditor-settings="{{ ckeditor_js_settings|json_encode }}" data-highlighted-comment="{{ highlighted_comment }}" data-discussion-id="{{ discussion_id }}">{{ 'Comments'|t }}</div>
+              <div id="comments-discussion" data-highlighted-comment="{{ highlighted_comment }}" data-discussion-id="{{ discussion_id }}">{{ 'Comments'|t }}</div>
             </div>
             {% if contributors %}
               <aside class="ecl-editorial-article__aside">

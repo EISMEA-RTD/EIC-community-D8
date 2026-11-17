@@ -35,7 +35,7 @@ class GroupPermissionChecker {
    *   The permission to check for, e.g. 'view comments'.
    * @param \Drupal\Core\Session\AccountInterface $account
    *   The user account to check.
-   * @param \Drupal\group\Entity\GroupContentInterface[] $group_contents
+   * @param \Drupal\group\Entity\GroupRelationshipInterface[] $group_contents
    *   The array of group contents.
    * @param array|null $output
    *   The output to add cacheable dependency to.

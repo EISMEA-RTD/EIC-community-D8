@@ -14,7 +14,7 @@ use Drupal\eic_groups\GroupsModerationHelper;
 use Drupal\eic_user\UserHelper;
 use Drupal\file\Entity\File;
 use Drupal\group\Entity\Group;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\image\Entity\ImageStyle;
 use Drupal\node\Entity\Node;
@@ -172,7 +172,7 @@ class ProcessorGlobal extends DocumentProcessor {
         }
 
         // The node should not be accessible if the group is not published.
-        if ($node_group_contents = GroupContent::loadByEntity($node)) {
+        if ($node_group_contents = GroupRelationship::loadByEntity($node)) {
           $node_group_content = reset($node_group_contents);
           $group_last_moderation_state = $this->getLastRevisionModerationState($node_group_content->getGroup());
           $status = $node_group_content->getGroup()->isPublished() ?
@@ -436,11 +436,11 @@ class ProcessorGlobal extends DocumentProcessor {
       $last_revision_id = end($revision_ids);
     }
 
-    $last_revision = $entity->getRevisionId() !== $last_revision_id ?
-      $this->em->getStorage($entity_type)->loadRevision($last_revision_id) :
-      $this->em->getStorage($entity_type)->loadRevision(
-        $entity->getRevisionId()
-      );
+    /** @var \Drupal\Core\Entity\RevisionableStorageInterface $revision_storage */
+    $revision_storage = $this->em->getStorage($entity_type);
+    $last_revision = $revision_storage->loadRevision(
+      $entity->getRevisionId() !== $last_revision_id ? $last_revision_id : $entity->getRevisionId()
+    );
 
     return $last_revision->get('moderation_state')->value;
   }

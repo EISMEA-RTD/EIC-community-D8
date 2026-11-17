@@ -3,7 +3,7 @@
 namespace Drupal\eic_group_statistics\Plugin\GroupMetric;
 
 use Drupal\eic_group_statistics\GroupMetricPluginBase;
-use Drupal\ginvite\Plugin\GroupContentEnabler\GroupInvitation;
+use Drupal\ginvite\Plugin\Group\Relation\GroupInvitation;
 use Drupal\group\Entity\GroupInterface;
 
 /**
@@ -67,7 +67,7 @@ class GroupInvitations extends GroupMetricPluginBase {
       }
     }
 
-    return count($group->getContentEntities("group_invitation", $filters));
+    return count($group->getRelatedEntities("group_invitation", $filters));
   }
 
   /**

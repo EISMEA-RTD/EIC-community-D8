@@ -2,11 +2,10 @@ name: EIC Groups
 type: module
 description: Provides funcitonnality around groups.
 package: European Innovation Council
-core_version_requirement: ^8 || ^9 || ^10
+core_version_requirement: ^10 || ^11
 php: 7.3
 dependencies:
   - book:book
-  - oec_group_flex:oec_group_flex
   - ginvite:ginvite
   - eic_user:eic_user
   - eic_content:eic_content_wiki_page

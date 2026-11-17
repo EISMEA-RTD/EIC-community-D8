@@ -316,7 +316,7 @@ class ContentStatistics implements ContentStatisticsInterface {
    * Returns list of groups based on number of bundle.
    */
   public function getGroupsByNumberOfBundle($bundle, $groupType, $range = NULL) {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('groups_field_data', 'gfd', 'gfd.id = gcfd.gid');
     $query->addExpression('gcfd.gid', 'group_id');
     $query->addExpression('gfd.label', 'label');

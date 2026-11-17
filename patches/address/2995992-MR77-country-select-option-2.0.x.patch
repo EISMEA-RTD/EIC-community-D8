@@ -1,0 +1,679 @@
+diff --git a/src/Element/Address.php b/src/Element/Address.php
+index 9d68f3c34e48cb1dfd39d514b606b29369cdd6d5..9c5156e39df8304a7ee8ea49ae143d51ba1dc592 100644
+--- a/src/Element/Address.php
++++ b/src/Element/Address.php
+@@ -115,9 +115,7 @@ class Address extends FormElement {
+     // Preselect the default country to ensure it's present in the value.
+     $element['#default_value'] = (array) $element['#default_value'];
+     $element['#default_value'] = self::applyDefaults($element['#default_value']);
+-    if (empty($element['#default_value']['country_code']) && $element['#required']) {
+-      $element['#default_value']['country_code'] = Country::getDefaultCountry($element['#available_countries']);
+-    }
++
+     // Any input with a NULL or missing country_code is considered invalid.
+     // Even if the element is optional and no country is selected, the
+     // country_code would be an empty string, not NULL.
+diff --git a/src/Element/Country.php b/src/Element/Country.php
+index 145f46f68cdba6394bf550b06f0917acdd51db38..82abb8b5b45d5c848278f050b2e8f6e82ea47cc2 100644
+--- a/src/Element/Country.php
++++ b/src/Element/Country.php
+@@ -74,18 +74,14 @@ class Country extends FormElement {
+       $available_countries = array_combine($available_countries, $available_countries);
+       $country_list = array_intersect_key($country_list, $available_countries);
+     }
+-    if (empty($element['#default_value']) && $element['#required']) {
+-      // Fallback to the first country in the list if the default country
+-      // is empty even though the field is required.
+-      $element['#default_value'] = key($country_list);
+-    }
+ 
+     $element['#tree'] = TRUE;
+     // Hide the dropdown when there is only one possible value.
+-    if (count($country_list) == 1 && $element['#required']) {
++    // Filter out empty select options before count.
++    if (count(array_filter($country_list)) == 1 && $element['#required']) {
+       $element['country_code'] = [
+         '#type' => 'hidden',
+-        '#value' => key($country_list),
++        '#value' => key(array_filter($country_list)),
+       ];
+     }
+     else {
+@@ -96,6 +92,8 @@ class Country extends FormElement {
+         '#description_display' => $element['#description_display'],
+         '#options' => $country_list,
+         '#default_value' => $element['#default_value'],
++        '#empty_value' => '',
++        '#empty_option' => t('- Select -'),
+         '#required' => $element['#required'],
+         '#disabled' => $element['#disabled'],
+         '#limit_validation_errors' => [],
+@@ -105,9 +103,6 @@ class Country extends FormElement {
+         ],
+         '#weight' => -100,
+       ];
+-      if (!$element['#required']) {
+-        $element['country_code']['#empty_value'] = '';
+-      }
+       if (!empty($element['#ajax'])) {
+         $element['country_code']['#ajax'] = $element['#ajax'];
+         unset($element['#ajax']);
+diff --git a/tests/src/FunctionalJavascript/AddressCountryDefaultWidgetTest.php b/tests/src/FunctionalJavascript/AddressCountryDefaultWidgetTest.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..9eb8e5364b6e3805ddeac5cf98992c12c064e6ec
+--- /dev/null
++++ b/tests/src/FunctionalJavascript/AddressCountryDefaultWidgetTest.php
+@@ -0,0 +1,157 @@
++<?php
++
++namespace Drupal\Tests\address\FunctionalJavascript;
++
++use Drupal\field\Entity\FieldConfig;
++use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
++
++/**
++ * Tests the default address widget.
++ *
++ * @group address
++ */
++class AddressCountryDefaultWidgetTest extends WebDriverTestBase {
++
++  use AddressWidgetTestTrait;
++
++  /**
++   * {@inheritdoc}
++   */
++  protected static $modules = [
++    'system',
++    'language',
++    'user',
++    'field',
++    'field_ui',
++    'node',
++    'address',
++  ];
++
++  /**
++   * {@inheritdoc}
++   */
++  protected $defaultTheme = 'stark';
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setUp(): void {
++    parent::setUp();
++    $this->initialize('field_country', 'address_country', 'Country', 'value', 'address_country_default');
++  }
++
++  /**
++   * Tests the country field.
++   *
++   * Checked:
++   * - required/optional status.
++   * - available_countries instance setting.
++   */
++  public function testCountries(): void {
++    $field_name = $this->field->getName() . '[0][value]';
++    // Optional field: Country should be optional and set to default_country.
++    $this->drupalGet($this->nodeAddUrl);
++    $this->assertEmpty((bool) $this->xpath('//select[@name="' . $field_name . '" and boolean(@required)]'), 'Country is shown as optional.');
++    $this->assertOptionSelected($field_name, 'US', 'The configured default_country is selected.');
++
++    // Required field: Country should be required and set to default_country.
++    $this->field->setRequired(TRUE);
++    $this->field->save();
++    $this->drupalGet($this->nodeAddUrl);
++    $this->assertNotEmpty((bool) $this->xpath('//select[@name="' . $field_name . '" and boolean(@required)]'), 'Country is shown as required.');
++    $this->assertOptionSelected($field_name, 'US', 'The configured default_country is selected.');
++
++    // Required field with no default.
++    // Country should be required and set to empty value option.
++    $this->field->setDefaultValue([['value' => '']]);
++    $this->field->save();
++    $this->drupalGet($this->nodeAddUrl);
++    $this->assertNotEmpty((bool) $this->xpath('//select[@name="' . $field_name . '" and boolean(@required)]'), 'Country is shown as required.');
++    $this->assertOptionSelected($field_name, '', 'The empty option is selected.');
++
++    // All countries should be present in the form.
++    $countries = array_keys($this->countryRepository->getList());
++    $this->assertOptions($field_name, $countries, 'All countries are present.');
++
++    // Limit the list of available countries.
++    $countries = ['US', 'FR', 'BR', 'JP'];
++    $edit = [];
++    $edit['settings[available_countries][]'] = array_map(function ($country) {
++      return $country;
++    }, $countries);
++    $this->drupalGet($this->fieldConfigUrl);
++    $this->submitForm($edit, 'Save settings');
++    $this->drupalGet($this->nodeAddUrl);
++    $this->assertOptions($field_name, $countries, 'The restricted list of available countries is present.');
++
++    // Create an article with one of them.
++    $country_code = 'US';
++    $this->getSession()->getPage()->fillField($field_name, 'US');
++
++    $edit = [];
++    $edit['title[0][value]'] = $this->randomMachineName(8);
++    $this->submitForm($edit, 'Save');
++    // Check that the article has been created.
++    $node = $this->getNodeByTitle($edit['title[0][value]']);
++    $this->assertNotEmpty($node, 'Created article ' . $edit['title[0][value]']);
++
++    // Now remove 'US' from the list of available countries.
++    $countries = ['FR'];
++    $edit = [];
++    $edit['settings[available_countries][]'] = array_map(function ($country) {
++      return $country;
++    }, $countries);
++    $this->drupalGet($this->fieldConfigUrl);
++    $this->submitForm($edit, 'Save settings');
++
++    // Access the article's edit form and confirm the values are unchanged.
++    // 'US' should be in the list along with the available countries and should
++    // be selected.
++    $this->drupalGet('node/' . $node->id() . '/edit');
++    $this->assertOptionSelected($field_name, $country_code);
++    // Confirm that it is possible to switch the country to France, and back.
++    $this->getSession()->getPage()->fillField($field_name, 'FR');
++    $this->getSession()->getPage()->fillField($field_name, 'US');
++
++    // Test the widget with only one available country.
++    // Since the field is required, the country selector should be hidden.
++    $countries = ['US'];
++    $edit = [];
++    $edit['settings[available_countries][]'] = array_map(function ($country) {
++      return $country;
++    }, $countries);
++    $this->drupalGet($this->fieldConfigUrl);
++    $this->submitForm($edit, 'Save settings');
++
++    $this->drupalGet('node/' . $node->id() . '/edit');
++    $this->assertSession()->fieldNotExists($field_name . '[0][value]');
++  }
++
++  /**
++   * Tests the default value functionality.
++   */
++  public function testDefaultValue(): void {
++    $this->drupalGet($this->fieldConfigUrl);
++    // Confirm that the US is selected by default.
++    $this->assertSession()->fieldValueEquals('default_value_input[field_country][0][value]', 'US');
++    // Confirm that it is possible to switch the country to France.
++    $this->getSession()->getPage()->fillField('default_value_input[field_country][0][value]', 'FR');
++    $edit = [];
++    $this->submitForm($edit, 'Save settings');
++    $this->assertSession()->pageTextContains('Saved Country configuration.');
++
++    $this->container->get('entity_type.manager')->getStorage('field_config')->resetCache();
++    $this->field = FieldConfig::load($this->field->id());
++    $default_value = $this->field->getDefaultValueLiteral();
++    $expected_default_value = [
++      'value' => 'FR',
++    ];
++    $this->assertCount(1, $default_value);
++    $this->assertEquals($expected_default_value, array_filter($default_value[0]));
++
++    // Confirm that the default value is used on the node form.
++    $this->drupalGet($this->nodeAddUrl);
++    $this->assertSession()->fieldValueEquals('field_country[0][value]', 'FR');
++  }
++
++}
+diff --git a/tests/src/FunctionalJavascript/AddressDefaultWidgetTest.php b/tests/src/FunctionalJavascript/AddressDefaultWidgetTest.php
+index e803a47ad5b2b3ff7b90ab876833b186cdcff858..875b00d7f6247e857136e2375a486bfb219087d3 100644
+--- a/tests/src/FunctionalJavascript/AddressDefaultWidgetTest.php
++++ b/tests/src/FunctionalJavascript/AddressDefaultWidgetTest.php
+@@ -17,6 +17,7 @@ use Drupal\node\Entity\NodeType;
+  */
+ class AddressDefaultWidgetTest extends WebDriverTestBase {
+ 
++  use AddressWidgetTestTrait;
+   use StringTranslationTrait;
+ 
+   /**
+@@ -39,48 +40,6 @@ class AddressDefaultWidgetTest extends WebDriverTestBase {
+    */
+   protected $defaultTheme = 'stark';
+ 
+-  /**
+-   * User with permission to administer entities.
+-   *
+-   * @var \Drupal\user\UserInterface
+-   */
+-  protected $adminUser;
+-
+-  /**
+-   * Address field instance.
+-   *
+-   * @var \Drupal\field\FieldConfigInterface
+-   */
+-  protected $field;
+-
+-  /**
+-   * Entity form display.
+-   *
+-   * @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface
+-   */
+-  protected $formDisplay;
+-
+-  /**
+-   * URL to add new content.
+-   *
+-   * @var string
+-   */
+-  protected $nodeAddUrl;
+-
+-  /**
+-   * URL to field's configuration form.
+-   *
+-   * @var string
+-   */
+-  protected $fieldConfigUrl;
+-
+-  /**
+-   * The country repository.
+-   *
+-   * @var \CommerceGuys\Addressing\Country\CountryRepositoryInterface
+-   */
+-  protected $countryRepository;
+-
+   /**
+    * The subdivision repository.
+    *
+@@ -100,60 +59,7 @@ class AddressDefaultWidgetTest extends WebDriverTestBase {
+    */
+   protected function setUp(): void {
+     parent::setUp();
+-
+-    // Create node bundle for tests.
+-    $type = NodeType::create(['name' => 'Article', 'type' => 'article']);
+-    $type->save();
+-
+-    // Create user that will be used for tests.
+-    $this->adminUser = $this->createUser([
+-      'create article content',
+-      'edit own article content',
+-      'administer content types',
+-      'administer node fields',
+-    ]);
+-    $this->drupalLogin($this->adminUser);
+-
+-    // Add the address field to the article content type.
+-    $field_storage = FieldStorageConfig::create([
+-      'field_name' => 'field_address',
+-      'entity_type' => 'node',
+-      'type' => 'address',
+-    ]);
+-    $field_storage->save();
+-
+-    $this->field = FieldConfig::create([
+-      'field_storage' => $field_storage,
+-      'bundle' => 'article',
+-      'label' => 'Address',
+-      'default_value' => [
+-        [
+-          'country_code' => 'US',
+-        ],
+-      ],
+-    ]);
+-    $this->field->save();
+-
+-    // Set article's form display.
+-    $this->formDisplay = EntityFormDisplay::load('node.article.default');
+-
+-    if (!$this->formDisplay) {
+-      EntityFormDisplay::create([
+-        'targetEntityType' => 'node',
+-        'bundle' => 'article',
+-        'mode' => 'default',
+-        'status' => TRUE,
+-      ])->save();
+-      $this->formDisplay = EntityFormDisplay::load('node.article.default');
+-    }
+-    $this->formDisplay->setComponent($this->field->getName(), [
+-      'type' => 'address_default',
+-    ])->save();
+-
+-    $this->nodeAddUrl = 'node/add/article';
+-    $this->fieldConfigUrl = 'admin/structure/types/manage/article/fields/node.article.' . $this->field->getName();
+-
+-    $this->countryRepository = \Drupal::service('address.country_repository');
++    $this->initialize('field_address', 'address', 'Address', 'country_code', 'address_default');
+     $this->subdivisionRepository = \Drupal::service('address.subdivision_repository');
+     $this->addressFormatRepository = \Drupal::service('address.address_format_repository');
+   }
+@@ -273,6 +179,18 @@ class AddressDefaultWidgetTest extends WebDriverTestBase {
+     $this->assertSession()->fieldValueEquals($field_name . '[0][address][locality]', $address['locality']);
+     $this->assertOptionSelected($field_name . '[0][address][administrative_area]', $address['administrative_area']);
+     $this->assertSession()->fieldValueEquals($field_name . '[0][address][postal_code]', $address['postal_code']);
++
++    // Required field with no default.
++    // Country should be required and set to empty value option.
++    $this->field->setDefaultValue([]);
++    $this->field->setRequired(TRUE);
++    $this->field->save();
++    $this->drupalGet($this->nodeAddUrl);
++    $this->assertNotEmpty((bool) $this->xpath('//select[@name="' . $field_name . '[0][address][country_code]" and boolean(@required)]'), 'Country is shown as required.');
++    $this->assertOptionSelected($field_name . '[0][address][country_code]', '', 'The empty option is selected.');
++    // All countries should be present in the form.
++    $countries = array_keys($this->countryRepository->getList());
++    $this->assertOptions($field_name . '[0][address][country_code]', $countries, 'All countries are present.');
+   }
+ 
+   /**
+@@ -672,68 +590,6 @@ class AddressDefaultWidgetTest extends WebDriverTestBase {
+     $this->assertFieldValues($found_options, $options, $message);
+   }
+ 
+-  /**
+-   * Asserts that a select field has a selected option.
+-   *
+-   * @param string $id
+-   *   ID of select field to assert.
+-   * @param string $option
+-   *   Option to assert.
+-   * @param string $message
+-   *   (optional) A message to display with the assertion. Do not translate
+-   *   messages: use \Drupal\Component\Utility\SafeMarkup::format() to embed
+-   *   variables in the message text, not t(). If left blank, a default message
+-   *   will be displayed.
+-   *
+-   * @not-deprecated
+-   */
+-  protected function assertOptionSelected($id, $option, $message = '') {
+-    $elements = $this->xpath('//select[@name=:id]//option[@value=:option]', [
+-      ':id' => $id,
+-      ':option' => $option,
+-    ]);
+-    foreach ($elements as $element) {
+-      $this->assertNotEmpty(
+-        $element->isSelected(),
+-        $message ? $message : new FormattableMarkup('Option @option for field @id is selected.', [
+-          '@option' => $option,
+-          '@id' => $id,
+-        ]));
+-    }
+-  }
+-
+-  /**
+-   * Asserts that the passed field values are correct.
+-   *
+-   * Ignores differences in ordering.
+-   *
+-   * @param array $field_values
+-   *   The field values.
+-   * @param array $expected_values
+-   *   The expected values.
+-   * @param string $message
+-   *   (optional) A message to display with the assertion. Do not translate
+-   *   messages: use \Drupal\Component\Utility\SafeMarkup::format() to embed
+-   *   variables in the message text, not t(). If left blank, a default message
+-   *   will be displayed.
+-   */
+-  protected function assertFieldValues(array $field_values, array $expected_values, $message = '') {
+-    $valid = TRUE;
+-    if (count($field_values) == count($expected_values)) {
+-      foreach ($expected_values as $value) {
+-        if (!in_array($value, $field_values)) {
+-          $valid = FALSE;
+-          break;
+-        }
+-      }
+-    }
+-    else {
+-      $valid = FALSE;
+-    }
+-
+-    $this->assertTrue($valid, $message);
+-  }
+-
+   /**
+    * Asserts that the given address field has the given values.
+    *
+diff --git a/tests/src/FunctionalJavascript/AddressWidgetTestTrait.php b/tests/src/FunctionalJavascript/AddressWidgetTestTrait.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..4268a127105b1b8f9e90d4666486053e2697da0a
+--- /dev/null
++++ b/tests/src/FunctionalJavascript/AddressWidgetTestTrait.php
+@@ -0,0 +1,239 @@
++<?php
++
++namespace Drupal\Tests\address\FunctionalJavascript;
++
++use Drupal\Component\Render\FormattableMarkup;
++use Drupal\Core\Entity\Entity\EntityFormDisplay;
++use Drupal\field\Entity\FieldConfig;
++use Drupal\field\Entity\FieldStorageConfig;
++use Drupal\node\Entity\NodeType;
++
++/**
++ * Provides common properties and methods to Address widget tests.
++ */
++trait AddressWidgetTestTrait {
++
++  /**
++   * User with permission to administer entities.
++   *
++   * @var \Drupal\user\UserInterface
++   */
++  protected $adminUser;
++
++  /**
++   * Address field instance.
++   *
++   * @var \Drupal\field\FieldConfigInterface
++   */
++  protected $field;
++
++  /**
++   * Entity form display.
++   *
++   * @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface
++   */
++  protected $formDisplay;
++
++  /**
++   * URL to add new content.
++   *
++   * @var string
++   */
++  protected $nodeAddUrl;
++
++  /**
++   * URL to field's configuration form.
++   *
++   * @var string
++   */
++  protected $fieldConfigUrl;
++
++  /**
++   * The country repository.
++   *
++   * @var \CommerceGuys\Addressing\Country\CountryRepositoryInterface
++   */
++  protected $countryRepository;
++
++  /**
++   * Initializes Address widget tests.
++   *
++   * - Creates a node bundle and requested field configuration.
++   * - Creates an admin user and logs them in.
++   * - Initializes protected data members.
++   *
++   * @param string $field_name
++   *   The field storage configured field name.
++   * @param string $field_type
++   *   The field storage configured type.
++   * @param string $label
++   *   The field configured label.
++   * @param string $default_value_key
++   *   The default value key.
++   * @param string $form_display_widget_type
++   *   The form display widget type.
++   *
++   * @throws \Drupal\Core\Entity\EntityStorageException
++   */
++  protected function initialize($field_name, $field_type, $label, $default_value_key, $form_display_widget_type) {
++    // Create node bundle for tests.
++    $type = NodeType::create(['name' => 'Article', 'type' => 'article']);
++    $type->save();
++    $this->nodeAddUrl = 'node/add/article';
++
++    // Create user that will be used for tests.
++    $this->adminUser = $this->createUser([
++      'create article content',
++      'edit own article content',
++      'administer content types',
++      'administer node fields',
++    ]);
++    $this->drupalLogin($this->adminUser);
++
++    // Add the address field to the article content type.
++    $field_storage = FieldStorageConfig::create([
++      'field_name' => $field_name,
++      'entity_type' => 'node',
++      'type' => $field_type,
++    ]);
++    $field_storage->save();
++
++    $this->field = FieldConfig::create([
++      'field_storage' => $field_storage,
++      'bundle' => 'article',
++      'label' => $label,
++      'default_value' => [
++        [
++          $default_value_key => 'US',
++        ],
++      ],
++    ]);
++    $this->field->save();
++
++    // Set article's form display.
++    $this->formDisplay = EntityFormDisplay::load('node.article.default');
++
++    if (!$this->formDisplay) {
++      EntityFormDisplay::create([
++        'targetEntityType' => 'node',
++        'bundle' => 'article',
++        'mode' => 'default',
++        'status' => TRUE,
++      ])->save();
++      $this->formDisplay = EntityFormDisplay::load('node.article.default');
++    }
++    $this->formDisplay->setComponent($this->field->getName(), [
++      'type' => $form_display_widget_type,
++    ])->save();
++
++    $this->fieldConfigUrl = 'admin/structure/types/manage/article/fields/node.article.' . $this->field->getName();
++
++    $this->countryRepository = \Drupal::service('address.country_repository');
++  }
++
++  /**
++   * Asserts that a select field has all of the provided options.
++   *
++   * Core only has assertOption(), this helper decreases the number of needed
++   * assertions.
++   *
++   * @param string $id
++   *   ID of select field to assert.
++   * @param array $options
++   *   Options to assert.
++   * @param string $message
++   *   (optional) A message to display with the assertion. Do not translate
++   *   messages: use \Drupal\Component\Utility\SafeMarkup::format() to embed
++   *   variables in the message text, not t(). If left blank, a default message
++   *   will be displayed.
++   */
++  protected function assertOptions($id, array $options, $message = '') {
++    $elements = $this->xpath('//select[@name="' . $id . '"]/option');
++    // Assume an empty option is valid.
++    // Look through the options array_keys for blank keys. This is the empty
++    // "- Select -" option. Because a blank value would not be listed as a
++    // valid field value, filter out the empty option before we check this list
++    // against valid field values.
++    $elements = array_filter($elements, function ($k) {
++      return !empty($k);
++    }, ARRAY_FILTER_USE_KEY);
++    $found_options = [];
++    foreach ($elements as $element) {
++      if ($option = $element->getValue()) {
++        $found_options[] = $option;
++      }
++    }
++    $this->assertFieldValues($found_options, $options, $message);
++  }
++
++  /**
++   * Asserts that a select field has a selected option.
++   *
++   * @param string $id
++   *   ID of select field to assert.
++   * @param string $option
++   *   Option to assert.
++   * @param string $message
++   *   (optional) A message to display with the assertion. Do not translate
++   *   messages: use \Drupal\Component\Utility\SafeMarkup::format() to embed
++   *   variables in the message text, not t(). If left blank, a default message
++   *   will be displayed.
++   *
++   * @not-deprecated
++   */
++  protected function assertOptionSelected($id, $option, $message = '') {
++    if ($option === '') {
++      $elements = $this->xpath('//select[@name=:id]//option[not(@value) or (@value and string-length(@value)=0)]', [':id' => $id]);
++      $this->assertNotEmpty($elements, new FormattableMarkup('A blank option for field @id is not found.', ['@id' => $id]));
++    }
++    else {
++      $elements = $this->xpath('//select[@name=:id]//option[@value=:option]', [':id' => $id, ':option' => $option]);
++      $this->assertNotEmpty($elements, new FormattableMarkup('Option @option for field @id is not found.', ['@option' => $option, '@id' => $id]));
++    }
++    $elements = $this->xpath('//select[@name=:id]//option[@value=:option]', [
++      ':id' => $id,
++      ':option' => $option,
++    ]);
++    foreach ($elements as $element) {
++      $this->assertNotEmpty(
++        $element->isSelected(),
++        $message ? $message : new FormattableMarkup('Option @option for field @id is selected.', [
++          '@option' => $option,
++          '@id' => $id,
++        ]));
++    }
++  }
++
++  /**
++   * Asserts that the passed field values are correct.
++   *
++   * Ignores differences in ordering.
++   *
++   * @param array $field_values
++   *   The field values.
++   * @param array $expected_values
++   *   The expected values.
++   * @param string $message
++   *   (optional) A message to display with the assertion. Do not translate
++   *   messages: use \Drupal\Component\Utility\SafeMarkup::format() to embed
++   *   variables in the message text, not t(). If left blank, a default message
++   *   will be displayed.
++   */
++  protected function assertFieldValues(array $field_values, array $expected_values, $message = '') {
++    $valid = TRUE;
++    if (count($field_values) == count($expected_values)) {
++      foreach ($expected_values as $value) {
++        if (!in_array($value, $field_values)) {
++          $valid = FALSE;
++          break;
++        }
++      }
++    }
++    else {
++      $valid = FALSE;
++    }
++
++    $this->assertTrue($valid, $message);
++  }
++
++}

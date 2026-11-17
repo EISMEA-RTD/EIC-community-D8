@@ -6,7 +6,7 @@ services:
       - { name: event_subscriber }
   eic_groups.helper:
     class: Drupal\eic_groups\EICGroupsHelper
-    arguments: ['@database', '@current_route_match', '@module_handler', '@current_user', '@datetime.time', '@oec_group_flex.helper', '@plugin.manager.group_visibility', '@path.current', '@entity_type.manager', '@plugin.manager.group_content_enabler', '@oec_group_flex.group_visibility.storage']
+    arguments: ['@database', '@current_route_match', '@module_handler', '@current_user', '@datetime.time', '@path.current', '@entity_type.manager', '@group_relation_type.manager']
   eic_groups.book_page_redirect_subscriber:
     class: Drupal\eic_groups\EventSubscriber\BookPageRedirectSubscriber
     arguments: ['@book.manager', '@entity_type.manager']
@@ -74,10 +74,6 @@ services:
     class: Drupal\eic_groups\Routing\RouteSubscriber
     tags:
       - { name: event_subscriber }
-  eic_groups.create_field_edit_access:
-    class: Drupal\eic_groups\Commands\CreateFieldEditAccess
-    tags:
-      - { name: drush.command }
   eic_groups.pathauto.generator.decorator:
     class: Drupal\eic_groups\PathautoGenerator
     decorates: pathauto.generator
@@ -89,4 +85,4 @@ services:
     decorates: ginvite_event_subscriber
     decoration_priority: 1
     public: true
-    arguments: ['@eic_groups.ginvite_event_subscriber.decorator.inner', '@ginvite.invitation_loader', '@current_user', '@messenger', '@logger.factory', '@config.factory', '@ginvite.group_invitation_manager']
+    arguments: ['@eic_groups.ginvite_event_subscriber.decorator.inner', '@ginvite.invitation_loader', '@messenger', '@logger.factory', '@config.factory', '@ginvite.group_invitation_manager', '@current_user', '@path.current']

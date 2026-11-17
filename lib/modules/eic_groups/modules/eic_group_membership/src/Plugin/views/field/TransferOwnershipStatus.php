@@ -98,14 +98,14 @@ class TransferOwnershipStatus extends FieldPluginBase {
    * {@inheritdoc}
    */
   public function render(ResultRow $values) {
-    /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
     $group_content = $this->getEntity($values);
     $handler = $this->requestHandlerCollector->getHandlerByType(RequestTypes::TRANSFER_OWNERSHIP);
     $output = [];
 
     // We return empty output if the group content entity is not a group
     // membership.
-    if ($group_content->getContentPlugin()->getPluginId() !== 'group_membership') {
+    if ($group_content->getPlugin()->getPluginId() !== 'group_membership') {
       return $output;
     }
 

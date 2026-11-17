@@ -60,7 +60,6 @@ class OrganisationResource extends GroupResourceBase {
     OrganisationsHelper::setRequiredFieldsDefaultValues($entity);
 
     // Sets default group features.
-    $this->setDefaultGroupFeatures($entity);
 
     return parent::post($entity);
   }

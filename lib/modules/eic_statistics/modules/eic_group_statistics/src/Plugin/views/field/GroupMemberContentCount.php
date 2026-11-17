@@ -49,7 +49,7 @@ class GroupMemberContentCount extends NumericField {
     $conditions = [
       'entity_id.entity:node.uid' => $membership->getEntity()->id(),
     ];
-    /** @var \Drupal\group\Entity\GroupContentInterface $membership */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $membership */
     return $this->groupsStatisticsHelper->getGroupContentCount($membership->getGroup(), $conditions);
   }
 

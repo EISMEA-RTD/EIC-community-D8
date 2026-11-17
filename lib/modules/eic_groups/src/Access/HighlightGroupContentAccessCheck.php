@@ -50,27 +50,29 @@ class HighlightGroupContentAccessCheck implements AccessInterface {
         ->setCacheMaxAge(0);
     }
 
-    $supported_plugins = [];
+    // Group 2 dropped the $filters argument from the relationship getters, so
+    // rather than loading every relationship and filtering it down by type and
+    // entity ID, ask the group for this node's relationships one plugin at a
+    // time. Same answer, narrower queries.
+    $supported = FALSE;
+    $related = FALSE;
     foreach (self::SUPPORTED_PLUGIN_IDS as $plugin_id) {
-      if (!$group->getGroupType()->hasContentPlugin($plugin_id)) {
+      if (!$group->getGroupType()->hasPlugin($plugin_id)) {
         continue;
       }
-      $supported_plugins[] = $group->getGroupType()
-        ->getContentPlugin($plugin_id)
-        ->getContentTypeConfigId();
+      $supported = TRUE;
+      if ($group->getRelationshipsByEntity($node, $plugin_id)) {
+        $related = TRUE;
+        break;
+      }
     }
 
-    if (empty($supported_plugins)) {
+    if (!$supported) {
       return AccessResult::forbidden('Content not supported')
         ->setCacheMaxAge(0);
     }
 
-    $group_content = $group->getContentEntities(NULL, [
-      'type' => $supported_plugins,
-      'entity_id' => $node->id(),
-    ]);
-
-    if (empty($group_content)) {
+    if (!$related) {
       return AccessResult::forbidden('Invalid group content argument')
         ->setCacheMaxAge(0);
     }

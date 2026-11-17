@@ -1,0 +1,15 @@
+# Schema for the views plugins provided by eic_groups.
+
+views.access.eic_group_moderation_state_permission:
+  type: mapping
+  label: 'Group moderation state and permission'
+  mapping:
+    group_permission:
+      type: string
+      label: 'Group permission'
+    moderation_states:
+      type: sequence
+      label: 'Allowed group moderation states'
+      sequence:
+        type: string
+        label: 'Moderation state'

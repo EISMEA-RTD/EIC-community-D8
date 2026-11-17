@@ -21,7 +21,7 @@ class GroupMembershipConstraintValidator extends ConstraintValidator {
     }
 
     // We skip group_content entities that are not group_membership.
-    if ($entity->getGroupContentType()->getContentPluginId() !== 'group_membership') {
+    if ($entity->getRelationshipType()->getPluginId() !== 'group_membership') {
       return;
     }
 
@@ -44,7 +44,7 @@ class GroupMembershipConstraintValidator extends ConstraintValidator {
 
     foreach ($group_owners as $group_owner) {
       // It's the same owner so we can exit.
-      if ($group_owner->getGroupContent()->id() === $entity->id()) {
+      if ($group_owner->getGroupRelationship()->id() === $entity->id()) {
         break;
       }
 

@@ -130,7 +130,7 @@ class SolrDocumentProcessor {
     $queue = $this->queueFactory->get('eic_groups_group_content_search_api');
     $queue_worker = $this->queueManager->createInstance('eic_groups_group_content_search_api');
 
-    /** @var \Drupal\group\Entity\Storage\GroupContentStorageInterface $storage */
+    /** @var \Drupal\group\Entity\Storage\GroupRelationshipStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('group_content');
     $contents = $storage->loadByGroup($group);
 

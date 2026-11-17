@@ -171,7 +171,7 @@ services:
       - [ setStateCache, [ '@?state' ] ]
   eic_search.document_processor_visibility:
     class: Drupal\eic_search\Search\DocumentProcessor\ProcessorVisibility
-    arguments: ['@oec_group_flex.helper', '@eic_groups.helper']
+    arguments: ['@eic_groups.helper']
     tags:
       - { name: eic_search.document_processor, priority: 24 }
     calls:
@@ -245,4 +245,4 @@ services:
       - [ setStateCache, [ '@?state' ] ]
   eic_search.solr_search_manager:
     class: Drupal\eic_search\Service\SolrSearchManager
-    arguments: ['@current_user', '@eic_search.sources_collector', '@entity_type.manager', '@group.membership_loader', '@oec_group_flex.group_visibility.storage']
+    arguments: ['@current_user', '@eic_search.sources_collector', '@entity_type.manager', '@group.membership_loader']

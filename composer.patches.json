@@ -1,89 +1,55 @@
 {
-  "patches": {
-    "drupal/core": {
-      "2973863 - ValidReferenceConstraintValidator should not try to enforce data integrity on pre-existing references": "patches/core/MR-9210-82428b54baf625e313-2973863.patch",
-      "2918537 - Cannot save unpublished versions of published content for users without manage book privileges": "https://www.drupal.org/files/issues/2021-11-16/2918537-68.patch",
-      "2760983 - array_flip(): Can only flip STRING and INTEGER values! EntityStorageBase.php:227": "https://www.drupal.org/files/issues/2020-02-06/2760983-8.patch",
-      "2329253 - Allow the ChangedItem to skip updating the entity's \"changed\" timestamp when synchronizing (f.e. when migrating)": "https://www.drupal.org/files/issues/2024-07-30/2329253-10.x.patch",
-      "2907760 - Notice: Undefined index: default in Drupal\\views\\Plugin\\views\\PluginBase->setOptionDefaults()": "https://www.drupal.org/files/issues/2022-05-26/2907760-11-9.3.x.patch",
-      "3183509 - Use the user display name instead of the username on the user authoring information in the node edit form": "patches/core/MR-352-3183509-user-display-name-node-edit-form.patch",
-      "Content moderation does not sanity check original entity moderate state is present / exists": "https://www.drupal.org/files/issues/2022-06-09/add-sanity-checking-to-content-moderation-original-value-checks.patch",
-      "EICNET-3009 - Change advanced sidebar \"Last saved\" datetime to EU format": "patches/core/EICNET-3009-change-date-format-last-saved.patch",
-      "3456176 - 10.3 upgrade now missing status-message theme suggestions": "https://www.drupal.org/files/issues/2024-06-28/3456176-45-missing-status-messages-theme-suggestions.patch",
-      "3303889 - Error: Call to a member function uuid() on null in MediaLibraryEditorOpener->getSelectionResponse() (line 72 of /app/docroot/core/modules/media_library/src/MediaLibraryEditorOpener.php)": "https://www.drupal.org/files/issues/2023-12-01/3340973-33.patch",
-      "2230909 - Default entity reference field to current user (MR 8282, Drupal 10.6 compatible) - replaces oe_content's 10.2-only patch": "https://www.drupal.org/files/issues/2026-03-26/8282-10.6.x.patch"
-    },
-    "drupal/address": {
-      "2812659 - Integrate Address with Search API (adds a Search API processor to convert country code to full country name)": "https://www.drupal.org/files/issues/2021-06-14/integrate-address-searchapi-2812659-57_0.patch",
-      "2995992 - Country field should display the \"- Select -\" option to match core behavior": "https://www.drupal.org/files/issues/2022-03-14/2995992-56.patch"
-    },
-    "drupal/block_content_permissions": {
-      "2920739 - Allow accessing the \"Custom block library\" page without \"Administer blocks\" permission": "https://www.drupal.org/files/issues/2020-07-27/block_content_permissions-access_listing_page-2920739-38.patch"
-    },
-    "drupal/ckeditor_find": {
-      "D10 compatibility": "https://www.drupal.org/files/issues/2025-02-25/3397636-d10-ckeditor_find-10.patch"
-    },
-    "drupal/ckeditor_selectall": {
-      "3226489 - Make this module compatible with Drupal 10": "https://www.drupal.org/files/issues/2023-10-25/3226489-4.patch"
-    },
-    "drupal/ckeditor_oembed": {
-      "3296767 - Drupal 10 compatibility": "https://www.drupal.org/files/issues/2022-07-18/ckeditor_oembed.1.x-dev.rector.patch"
-    },
-    "drupal/group": {
-      "2881769 - group/{group}/node/create uses the permissions of group/{group}/node/add": "https://www.drupal.org/files/issues/2020-10-01/2881769-22.patch",
-      "2815971 - More contexts needed": "https://www.drupal.org/files/issues/2021-02-19/2815971-28.patch",
-      "3071489 - Incorrect Access Check on Media Library": "https://www.drupal.org/files/issues/2022-05-17/incorrect-access-check-on-media-library-3071489-27.patch",
-      "2876696 - Add support for 'view own unpublished entity' permission": "https://git.drupalcode.org/project/group/-/merge_requests/9.patch",
-      "2916907 - Group content tokens for label and referenced entity": "https://www.drupal.org/files/issues/2021-09-29/group-content-entity-tokens-2916907-23.patch",
-      "3302469 - Allow other modules to alter the calculated permissions": "https://www.drupal.org/files/issues/2022-08-09/group-calculated_permissions_alter-3302469-4.patch",
-      "3294949 - Group Permission Callbacks Create White Screen Error on Group Type Permissions Page": "https://www.drupal.org/files/issues/2022-07-27/group-3294949-2.patch",
-      "3132084 - Add addRole(), removeRole(), and hasRole() methods to GroupMembership": "patches/group/3132084-add-remove-role-1.6.0.patch",
-      "Fix EntityStorageException in getBestCandidate() when route has unsaved entities": "patches/group/group-route-context-skip-unsaved-entities.patch",
-      "PHP 8.3: Fix static callable deprecation and uasort bool return deprecation": "patches/group/php83-deprecation-fixes.patch"
-    },
-    "drupal/group_permissions": {
-      "3301865 - Allow other modules to alter the calculated permissions(3302469)": "https://www.drupal.org/files/issues/2025-02-20/3301865-8.patch"
-    },
-    "drupal/group_content_menu": {
-      "3209011 - Active trail is cached incorrectly": "https://www.drupal.org/files/issues/2021-04-21/group_content_menu-active_trail_cache_problem-3209011-10.patch"
-    },
-    "drupal/flag": {
-      "3168014 - TypeError: Argument 1 passed to Drupal\\flag\\TwigExtension\\FlagCount::count() must implement interface" : "https://www.drupal.org/files/issues/2025-02-21/flag-count-interface-3168014-41.patch",
-      "2723703 - Add relationship to flagged entities when Flagging is base table" : "https://www.drupal.org/files/issues/2021-02-22/2723703-73.patch"
-    },
-    "drupal/group_flex": {
-      "3207164 - fatal error when saving after adding an image to an image field in a flex group" : "patches/group_flex/3207164-fatal-error-when-saving-after-adding-an-image-to-an-image-field-in-a-flex-group-24.patch",
-      "PHP 8.3: Fix dynamic property deprecation for allPlugins in manager classes": "patches/group_flex/php83-dynamic-property-fix.patch"
-    },
-    "drupal/masquerade": {
-      "3181882 - \"Masquerade as ROLE\" permission not granting access": "https://www.drupal.org/files/issues/2020-11-11/masquerade_permission_per_role-3181882-2.patch"
-    },
-    "drupal/message": {
-      "3183734 - Unable to use inline styles when tokens are used in a message (patch provided)": "https://www.drupal.org/files/issues/2020-11-20/update-process-token-function-to-avoid-issue-with-html-filtering-3183734-2.patch"
-    },
-    "drupal/menu_trail_by_path": {
-      "2914746 - Fatal error after installing the module": "https://www.drupal.org/files/issues/2025-10-15/2914746-35.patch"
-    },
-    "drupal/paragraphs": {
-      "2890086 - Paragraphs widgets validates fields that are not in the current form display (rerolled for paragraphs 1.23; supersedes the -65 patch shipped by oe_paragraphs, which is skipped via ignore-dependency-patches) @see https://www.drupal.org/project/paragraphs/issues/2890086": "https://www.drupal.org/files/issues/2026-08-03/respect-display-on-validation-2890086-67.diff"
-    },
-    "drupal/publication_date": {},
-    "drupal/select2": {
-      "3551995 - Claro theme styling issues in 2.0.0": "https://www.drupal.org/files/issues/2026-01-21/select2-3551995-claro_styling-5.patch"
-    },
-    "drupal/subpathauto": {
-      "3130139 - Group Content Add/Create Paths do not work": "https://www.drupal.org/files/issues/2023-02-15/subpathauto-group_content_add_create-3130139-14.patch"
-    },
-    "drupal/views_data_export": {
-      "3173296 - Batch mode does not allow other modules to alter query": "https://www.drupal.org/files/issues/2021-02-12/3173296-9-batch-query-alter.patch",
-      "3241213 - Add S3 bucket support": "patches/views_data_export/3241213.patch",
-      "3189760 - CSV file is not downloaded automatically.": "https://www.drupal.org/files/issues/2023-06-01/views_data_export-3189760-22.patch"
-    },
-    "drupal/views_data_export_phpspreadsheet": {
-      "3503071 - Fatal error: Declaration of XlsEncoder::encode() must be compatible with EncoderInterface::encode()": "patches/views_data_export_phpspreadsheet/3503071.patch"
-    },
-    "openeuropa/oe_theme": {
-      "FilterEclTable does not add the ecl-table__caption class to <caption>": "patches/oe_theme/filter-ecl-table-caption-class.patch"
+    "patches": {
+        "drupal/core": {
+            "2973863 - ValidReferenceConstraintValidator should not try to enforce data integrity on pre-existing references (comment 53, applies to 11.4.x; replaces the older MR 9210 export)": "https://www.drupal.org/files/issues/2026-02-17/2973863-53.patch",
+            "2760983 - array_flip(): Can only flip STRING and INTEGER values! (rerolled locally for 11.4.x: loadMultipleRevisions() was rewritten and array_flip() now runs unconditionally at the top; the upstream issue is closed as a duplicate and has no current patch)": "patches/core/2760983-array-flip-null-revision-ids-11.4.x.patch",
+            "2907760 - Notice: Undefined index: default in Drupal\\views\\Plugin\\views\\PluginBase->setOptionDefaults()": "https://www.drupal.org/files/issues/2022-05-26/2907760-11-9.3.x.patch",
+            "Content moderation does not sanity check original entity moderate state is present / exists": "https://www.drupal.org/files/issues/2022-06-09/add-sanity-checking-to-content-moderation-original-value-checks.patch",
+            "EICNET-3009 - Change advanced sidebar \"Last saved\" datetime to EU format (rerolled locally for 11.4.x: NodeForm moved to node/src/Form/)": "patches/core/EICNET-3009-change-date-format-last-saved-11.4.x.patch",
+            "3456176 - 10.3 upgrade now missing status-message theme suggestions (comment 138, applies to 11.4.x)": "https://www.drupal.org/files/issues/2025-06-20/3456176-138-missing-status-messages-theme-suggestions.patch",
+            "3303889 - Error: Call to a member function uuid() on null in MediaLibraryEditorOpener->getSelectionResponse()": "https://www.drupal.org/files/issues/2023-12-01/3340973-33.patch",
+            "2230909 - Simple decimals fail validation (reroll for 11.4.7, applies to 11.4.x; replaces the 10.6.x export) - replaces oe_content's 10.2-only patch": "https://www.drupal.org/files/issues/2026-09-19/2230909-11.4.7.patch"
+        },
+        "drupal/address": {
+            "2812659 - Integrate Address with Search API (MR !84, rebased for address 2.x; vendored because the MR is unmerged and its diff URL changes on every push)": "patches/address/2812659-MR84-search-api-processor-2.x.patch",
+            "2995992 - Country field should display the \"- Select -\" option to match core behavior (MR !77, targets 2.0.x; vendored for the same reason)": "patches/address/2995992-MR77-country-select-option-2.0.x.patch"
+        },
+        "drupal/fragments": {
+            "Fix revision routes: FragmentController uses $this->entityTypeManager as a property that create() never assigns (local patch, not filed upstream)": "patches/fragments/fragments-revision-entitytypemanager-property.patch"
+        },
+        "drupal/flag": {
+            "3168014 - TypeError: Argument 1 passed to Drupal\\flag\\TwigExtension\\FlagCount::count() must implement interface": "https://www.drupal.org/files/issues/2025-02-21/flag-count-interface-3168014-41.patch",
+            "2723703 - Add relationship to flagged entities when Flagging is base table": "https://www.drupal.org/files/issues/2021-02-22/2723703-73.patch"
+        },
+        "drupal/masquerade": {
+            "3181882 - \"Masquerade as ROLE\" permission not granting access": "https://www.drupal.org/files/issues/2020-11-11/masquerade_permission_per_role-3181882-2.patch"
+        },
+        "drupal/message": {
+            "3183734 - Unable to use inline styles when tokens are used in a message (patch provided)": "https://www.drupal.org/files/issues/2020-11-20/update-process-token-function-to-avoid-issue-with-html-filtering-3183734-2.patch"
+        },
+        "drupal/menu_trail_by_path": {
+            "2914746 - Fatal error after installing the module": "https://www.drupal.org/files/issues/2025-10-15/2914746-35.patch"
+        },
+        "drupal/paragraphs": {
+            "2890086 - Paragraphs widgets validates fields that are not in the current form display (rerolled for paragraphs 1.23; supersedes the -65 patch shipped by oe_paragraphs, which is skipped via ignore-dependency-patches) @see https://www.drupal.org/project/paragraphs/issues/2890086": "https://www.drupal.org/files/issues/2026-08-03/respect-display-on-validation-2890086-67.diff"
+        },
+        "drupal/publication_date": {},
+        "drupal/select2": {
+            "3551995 - Claro theme styling issues in 2.0.0": "https://www.drupal.org/files/issues/2026-01-21/select2-3551995-claro_styling-5.patch"
+        },
+        "drupal/subpathauto": {
+            "3130139 - Group Content Add/Create Paths do not work": "https://www.drupal.org/files/issues/2023-02-15/subpathauto-group_content_add_create-3130139-14.patch"
+        },
+        "drupal/views_data_export": {
+            "3173296 - Batch mode does not allow other modules to alter query": "https://www.drupal.org/files/issues/2021-02-12/3173296-9-batch-query-alter.patch",
+            "3241213 - Add S3 bucket support": "patches/views_data_export/3241213.patch",
+            "3189760 - CSV file is not downloaded automatically.": "https://www.drupal.org/files/issues/2023-06-01/views_data_export-3189760-22.patch"
+        },
+        "drupal/views_data_export_phpspreadsheet": {
+            "3503071 - Fatal error: Declaration of XlsEncoder::encode() must be compatible with EncoderInterface::encode()": "patches/views_data_export_phpspreadsheet/3503071.patch"
+        },
+        "openeuropa/oe_theme": {
+            "FilterEclTable does not add the ecl-table__caption class to <caption>": "patches/oe_theme/filter-ecl-table-caption-class.patch"
+        }
     }
-  }
 }

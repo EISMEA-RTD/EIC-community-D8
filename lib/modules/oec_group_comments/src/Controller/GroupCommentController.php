@@ -6,7 +6,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\comment\Controller\CommentController;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -40,7 +40,7 @@ class GroupCommentController extends CommentController {
       return $access;
     }
 
-    $group_contents = GroupContent::loadByEntity($entity);
+    $group_contents = GroupRelationship::loadByEntity($entity);
 
     // If entity is not a group content, we don't need extra logic.
     if (empty($group_contents)) {

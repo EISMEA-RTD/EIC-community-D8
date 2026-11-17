@@ -56,7 +56,7 @@ class ProcessorProject extends DocumentProcessor {
     $stakeholder_participants = [];
 
     /** @var \Drupal\eic_stakeholder\Entity\Stakeholder[] $stakeholder_coord_entities */
-    $stakeholder_coord_entities = $group->getContentEntities('group_stakeholder:coordinator');
+    $stakeholder_coord_entities = $group->getRelatedEntities('group_stakeholder:coordinator');
     foreach ($stakeholder_coord_entities as $stakeholder_coord_entity) {
       $country_code = $stakeholder_coord_entity->get('field_stakeholder_address')
         ->getValue()[0]['country_code'];
@@ -75,7 +75,7 @@ class ProcessorProject extends DocumentProcessor {
         ->getValue()[0]['country_code']] ?? '';
     }
 
-    $stakeholder_partic_entities = $group->getContentEntities('group_stakeholder:participant');
+    $stakeholder_partic_entities = $group->getRelatedEntities('group_stakeholder:participant');
     foreach ($stakeholder_partic_entities as $stakeholder_partic_entity) {
       $country_code = $stakeholder_partic_entity?->get('field_stakeholder_address')->first()?->getValue()['country_code'];
       if ($country_code) {

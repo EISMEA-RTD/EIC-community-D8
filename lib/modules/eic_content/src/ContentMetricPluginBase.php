@@ -45,7 +45,7 @@ abstract class ContentMetricPluginBase extends PluginBase implements ContentMetr
   /**
    * The group content enabler manager service.
    *
-   * @var \Drupal\group\Plugin\GroupContentEnablerManager
+   * @var \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManager
    */
   protected $groupContentEnablerManager;
 

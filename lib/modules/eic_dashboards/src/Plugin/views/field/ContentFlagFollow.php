@@ -3,7 +3,7 @@
 namespace Drupal\eic_dashboards\Plugin\views\field;
 
 
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\node\NodeInterface;
 use Drupal\views\Plugin\views\field\FieldPluginBase;
 use Drupal\views\ResultRow;
@@ -27,7 +27,7 @@ class ContentFlagFollow extends FieldPluginBase {
    */
   public function render(ResultRow $values) {
     $entity = $values->_entity;
-    if ($entity instanceof GroupContent) {
+    if ($entity instanceof GroupRelationship) {
       $entity = $entity->getEntity();
       /** @var \Drupal\node\NodeInterface $entity */
 

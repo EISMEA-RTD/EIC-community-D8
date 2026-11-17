@@ -11,6 +11,110 @@ use Drupal\taxonomy\Entity\Term;
 use Drupal\user\Entity\Role;
 
 /**
+ * Clears the registration of a module whose code is no longer on disk.
+ *
+ * A module listed in core.extension but absent from disk reports
+ * moduleExists() === FALSE, so a hook that asks that question first concludes
+ * "already uninstalled" and leaves the registration in place. That is exactly
+ * backwards, and it matters: ModuleInstaller validates the whole module list,
+ * so group_update_9200 -- which installs flexible_permissions -- fails with
+ * "The module X does not exist" while even one such entry survives.
+ *
+ * @param string $module
+ *   The module to check.
+ *
+ * @return bool
+ *   TRUE if a stale registration was cleared, in which case the caller has
+ *   nothing further to do for this module.
+ */
+function _eic_deploy_clear_missing_module_registration(string $module): bool {
+  $extension = \Drupal::configFactory()->getEditable('core.extension');
+  $modules = $extension->get('module') ?: [];
+
+  // Not registered at all: genuinely nothing to do.
+  if (!array_key_exists($module, $modules)) {
+    return FALSE;
+  }
+  // Registered and present: let the caller uninstall it properly.
+  if (\Drupal::service('extension.list.module')->exists($module)) {
+    return FALSE;
+  }
+
+  unset($modules[$module]);
+  $extension->set('module', $modules)->save();
+  \Drupal::service('update.update_hook_registry')->deleteInstalledVersion($module);
+
+  // A real uninstall also deletes the module's own configuration. Clearing the
+  // registration by hand does not, and the leftovers then block the config
+  // import at the end of the deploy: "Configuration X depends on the Y
+  // extension that will not be installed after import."
+  $config_factory = \Drupal::configFactory();
+  $deleted = [];
+  foreach ($config_factory->listAll($module . '.') as $name) {
+    $config_factory->getEditable($name)->delete();
+    $deleted[] = $name;
+  }
+
+  \Drupal::messenger()->addMessage($deleted
+    ? t('Cleared the stale registration of "@module", which has no code on disk, and deleted @count config object(s) it owned.', [
+      '@module' => $module,
+      '@count' => count($deleted),
+    ])
+    : t('Cleared the stale registration of "@module", which has no code on disk.', [
+      '@module' => $module,
+    ]));
+  return TRUE;
+}
+
+/**
+ * Implements hook_update_dependencies().
+ */
+function eic_deploy_update_dependencies() {
+  // Drupal orders updates by module and by number independently, which is not
+  // enough here: this module's hooks and Group's have to interleave in a
+  // specific way. The rehearsal against the TEST database proved it.
+  //
+  // group_update_9200 installs flexible_permissions, and ModuleInstaller
+  // validates the whole module list while doing so. Any module still
+  // registered in core.extension whose code has been removed makes that fail
+  // -- on TEST it failed with "The module block_content_permissions does not
+  // exist". Hooks 9014 to 9019 are what clear those registrations, so they all
+  // have to run first.
+  $dependencies['group'][9200]['eic_deploy'] = 9019;
+
+  // eic_deploy_update_9020 deletes relation types through the entity API, so
+  // group_content_type has to be loadable. Until group_update_9201 and _9202
+  // have rewritten the stored entity classes, the entity type still names
+  // Drupal\group\Entity\GroupContentType, which Group 2 does not ship, and
+  // the hook dies on an assertion instead.
+  $dependencies['eic_deploy'][9020]['group'] = 9202;
+
+  // These two write group role permissions. group_update_9205 to _9208 rewrite
+  // every group role, converting audience to scope, so let that settle first.
+  $dependencies['eic_deploy'][9022]['group'] = 9208;
+  $dependencies['eic_deploy'][9023]['group'] = 9208;
+
+  // These two touch relationship fields and membership entities, so they need
+  // the whole Group 2 chain -- in particular group_update_9203, which renames
+  // the base and data tables.
+  $dependencies['eic_deploy'][9021]['group'] = 9211;
+  $dependencies['eic_deploy'][9025]['group'] = 9211;
+
+  // 9026 repairs views and the search index after group_update_9203 renames the
+  // relationship tables. It has to run after that rename and, being a
+  // hook_update_N, it is guaranteed to run before any post-update -- which is
+  // the point, because core's views post-updates are what trip over the stale
+  // references.
+  $dependencies['eic_deploy'][9026]['group'] = 9211;
+
+  // 9027 edits the stored definitions of the group entity type. Group's own
+  // updates rewrite those, so let the whole chain finish before touching them.
+  $dependencies['eic_deploy'][9027]['group'] = 9211;
+
+  return $dependencies;
+}
+
+/**
  * Implements hook_install().
  */
 function eic_deploy_install() {
@@ -150,50 +254,13 @@ function eic_deploy_update_9003(&$sandbox) {
  * Remove group permission to access latest activity stream from anonymous.
  */
 function eic_deploy_update_9004(&$sandbox) {
-  $groups = Drupal::entityTypeManager()->getStorage('group')
-    ->loadByProperties([
-      'type' => 'group',
-    ]);
-
-  foreach ($groups as $group) {
-    $groupPermissionsManager = \Drupal::service('group_permission.group_permissions_manager');
-    $groupPermissions = $groupPermissionsManager->loadByGroup($group);
-
-    $rolePermissions = [
-      'access latest activity stream',
-    ];
-    $role = $group->getGroupType()->getAnonymousRoleId();
-
-    $permissions = $groupPermissions->getPermissions();
-    foreach ($rolePermissions as $permission) {
-      if (
-        array_key_exists($role, $permissions) ||
-        in_array($permission, $permissions[$role], TRUE)
-      ) {
-        $permissions[$role] = array_diff($permissions[$role], [$permission]);
-      }
-    }
-    $groupPermissions->setPermissions($permissions);
-
-    $violations = $groupPermissions->validate();
-
-    if (count($violations) > 0) {
-      $message = '';
-      foreach ($violations as $violation) {
-        $message .= "\n" . $violation->getMessage();
-      }
-      \Drupal::messenger()->addMessage('Group permissions are not saved correctly, because:' . $message);
-      continue;
-    }
-
-    // Saves the GroupPermission object with a new revision.
-    $groupPermissions->setNewRevision();
-    $groupPermissions->setRevisionUserId(1);
-    $groupPermissions->setRevisionCreationTime(\Drupal::service('datetime.time')
-      ->getRequestTime());
-    $groupPermissions->setRevisionLogMessage('Group features enabled/disabled.');
-    $groupPermissions->save();
-  }
+  // Intentionally a no-op. This hook edited per-group permission overrides
+  // through group_permissions, and read the anonymous role through
+  // GroupType::getAnonymousRoleId(). Both are gone: group_permissions was
+  // uninstalled and removed in eic_deploy_update_9019, and Group 2 dropped the
+  // per-audience role getters in favour of permission scopes. The hook ran long
+  // before either change in every environment, so there is nothing left to do;
+  // the body is removed rather than kept as code that can no longer execute.
 }
 
 /**
@@ -391,4 +458,805 @@ function eic_deploy_update_9013(&$sandbox) {
   ];
 
   eic_deploy_add_group_permissions_to_role($new_permissions, $roles);
+}
+
+/**
+ * Uninstall the Raven (Sentry) module.
+ */
+function eic_deploy_update_9014(&$sandbox) {
+  // Intentionally a no-op; the config import at the end of the deploy
+  // uninstalls Raven instead.
+  //
+  // This hook used to call module_installer->uninstall(['raven']), and the
+  // rehearsal against the TEST database showed why that cannot work. Raven's
+  // post-update functions are queued at the start of the update run, while the
+  // module is still enabled. ModuleInstaller::uninstall() then calls
+  // UpdateRegistry::filterOutInvokedUpdatesByExtension(), which drops Raven's
+  // entries from the list of updates already invoked -- so they are queued
+  // rather than skipped. By the time the run reaches them the module is gone,
+  // and `drush updb` aborts with "Post update function
+  // raven_post_update_add_http_compression not found".
+  //
+  // Raven's code is still on disk and raven is absent from config/sync's
+  // core.extension, so the config import uninstalls it the ordinary way. Its
+  // post-updates simply run first and are then discarded with the module. That
+  // is only safe because the code is present: a module whose code has already
+  // been removed cannot be uninstalled by a config import at all, which is why
+  // hooks 9016 to 9019 clear those registrations by hand instead.
+}
+
+/**
+ * Uninstall the Scheduler Content Moderation Integration module.
+ */
+function eic_deploy_update_9015(&$sandbox) {
+  $module_handler = \Drupal::service('module_handler');
+  if ($module_handler->moduleExists('scheduler_content_moderation_integration')) {
+    \Drupal::service('module_installer')->uninstall(['scheduler_content_moderation_integration']);
+    \Drupal::messenger()->addMessage(t('The module "scheduler_content_moderation_integration" has been uninstalled.'));
+  }
+  else {
+    \Drupal::messenger()->addMessage(t('The module "scheduler_content_moderation_integration" is already uninstalled.'));
+  }
+}
+
+/**
+ * Migrate block permissions to core, then uninstall block_content_permissions.
+ */
+function eic_deploy_update_9016(&$sandbox) {
+  // The registration check has to come first. See
+  // _eic_deploy_clear_missing_module_registration().
+  $stale = _eic_deploy_clear_missing_module_registration('block_content_permissions');
+
+  $module_handler = \Drupal::service('module_handler');
+  if (!$stale && !$module_handler->moduleExists('block_content_permissions')) {
+    \Drupal::messenger()->addMessage(t('The module "block_content_permissions" is already uninstalled.'));
+    return;
+  }
+
+  // Core 10.1+ supersedes this module, but the permission names differ. Grant
+  // the core equivalents BEFORE uninstalling: Role::onDependencyRemoval()
+  // strips the contrib permissions silently, and a config import reports
+  // success either way, so a missed rename would only surface as editors
+  // being unable to edit blocks.
+  $map = ['access block content overview' => 'access block library'];
+  foreach (array_keys(\Drupal::service('entity_type.bundle.info')->getBundleInfo('block_content')) as $bundle) {
+    $map["update any $bundle block content"] = "edit any $bundle block content";
+  }
+
+  foreach (\Drupal::entityTypeManager()->getStorage('user_role')->loadMultiple() as $role) {
+    $granted = FALSE;
+    foreach ($role->getPermissions() as $permission) {
+      if (isset($map[$permission]) && !$role->hasPermission($map[$permission])) {
+        $role->grantPermission($map[$permission]);
+        $granted = TRUE;
+      }
+    }
+    if ($granted) {
+      $role->save();
+      \Drupal::messenger()->addMessage(t('Granted core block permissions to role "@role".', ['@role' => $role->id()]));
+    }
+  }
+
+  if (!$stale) {
+    \Drupal::service('module_installer')->uninstall(['block_content_permissions']);
+    \Drupal::messenger()->addMessage(t('The module "block_content_permissions" has been uninstalled.'));
+  }
+}
+
+/**
+ * Uninstall the CKEditor 4 module stack.
+ */
+function eic_deploy_update_9017(&$sandbox) {
+  // Every text format already uses CKEditor 5 -- both editor.editor.* configs
+  // are 'ckeditor5' -- so none of these modules is reachable from the editor
+  // UI. They own no configuration either; the only thing holding them in place
+  // was a dead createInstance('ckeditor') call in CommentsFromDiscussionBlock,
+  // removed in the preceding commit.
+  //
+  // Ordered leaves-first. ModuleInstaller resolves dependencies itself, but
+  // ckeditor_div_manager declares none while its hook_requirements() returns
+  // REQUIREMENT_ERROR at *runtime* whenever ckeditor is absent -- and drush
+  // updb refuses to run against a requirements error. Uninstalling the whole
+  // set in one operation never leaves that state behind.
+  $modules = [
+    'colorbutton',
+    'panelbutton',
+    'ckeditor_blockimagepaste',
+    'ckeditor_div_manager',
+    'ckeditor_find',
+    'ckeditor_font',
+    'ckeditor_iframe',
+    'ckeditor_oembed',
+    'ckeditor_selectall',
+    'pagebreak',
+    'fakeobjects',
+    'ckeditor',
+  ];
+
+  // Registration first: a module listed in core.extension with no code on disk
+  // reports moduleExists() === FALSE, so filtering on that would silently skip
+  // exactly the entries that have to be cleared. See
+  // _eic_deploy_clear_missing_module_registration().
+  $cleared = [];
+  foreach ($modules as $module) {
+    if (_eic_deploy_clear_missing_module_registration($module)) {
+      $cleared[] = $module;
+    }
+  }
+
+  $module_handler = \Drupal::service('module_handler');
+  $installed = array_values(array_filter($modules, static function ($module) use ($module_handler, $cleared) {
+    return !in_array($module, $cleared, TRUE) && $module_handler->moduleExists($module);
+  }));
+
+  if (!$installed) {
+    \Drupal::messenger()->addMessage($cleared
+      ? t('Cleared @count stale CKEditor 4 registration(s); nothing left to uninstall.', ['@count' => count($cleared)])
+      : t('The CKEditor 4 modules are already uninstalled.'));
+    return;
+  }
+
+  $uninstallable = array_values(array_diff($installed, $missing));
+  if ($uninstallable) {
+    \Drupal::service('module_installer')->uninstall($uninstallable);
+    \Drupal::messenger()->addMessage(t('Uninstalled @count CKEditor 4 module(s): @list.', [
+      '@count' => count($uninstallable),
+      '@list' => implode(', ', $uninstallable),
+    ]));
+  }
+}
+
+/**
+ * Uninstall eic_recommend_content.
+ */
+function eic_deploy_update_9018(&$sandbox) {
+  // The "recommend this content to other members" feature is not wanted on
+  // this project, and it has never been reachable here in any case. The link
+  // is injected into node builds by hook_ENTITY_TYPE_view_alter(), and its
+  // template attaches the library eic_community/react-recommend-content-block
+  // -- a library belonging to the deprecated eic_community theme, which is not
+  // in the active theme chain (ddc_theme's base theme is oe_theme) and whose
+  // dist/ is gitignored and unbuilt. So the button could not render for anyone.
+  // There is also no data behind it: the recommend_content and
+  // recommend_content_group flags have never been flagged.
+  //
+  // Removing it also clears the last references to oec_group_flex outside
+  // eic_groups and eic_search, which unblocks removing oec_group_flex itself.
+  $module = 'eic_recommend_content';
+
+  // Registration first. See _eic_deploy_clear_missing_module_registration().
+  if (_eic_deploy_clear_missing_module_registration($module)) {
+    return;
+  }
+
+  if (!\Drupal::service('module_handler')->moduleExists($module)) {
+    \Drupal::messenger()->addMessage(t('The module "@module" is already uninstalled.', ['@module' => $module]));
+    return;
+  }
+
+  \Drupal::service('module_installer')->uninstall([$module]);
+  \Drupal::messenger()->addMessage(t('The module "@module" has been uninstalled.', ['@module' => $module]));
+}
+
+/**
+ * Flatten group_permissions away and remove the group flex/features stack.
+ */
+function eic_deploy_update_9019(&$sandbox) {
+  // This removes four modules, because they cannot be separated:
+  // group_flex declares group_permissions as a dependency, oec_group_flex
+  // depends on group_flex, and oec_group_features depends on
+  // group_permissions. Uninstalling group_permissions therefore takes all four.
+  //
+  // No permission migration is needed. The per-group group_permission records
+  // are copies of the default group roles, so the roles already ARE the shared
+  // matrix -- checked against all 44 records in the TEST dump and both records
+  // here. Deleting them is also what activates the access change in 59efdd4:
+  // the overrides carry their own copy of the matrix and win over the group
+  // roles regardless of the group type's
+  // third_party_settings.group_permissions.enabled flag, so 'view group' stays
+  // granted to every authenticated non-member until they are gone.
+  $modules = [
+    'oec_group_features',
+    'oec_group_flex',
+    'group_flex',
+    'group_permissions',
+  ];
+
+  $module_handler = \Drupal::service('module_handler');
+  $extension_list = \Drupal::service('extension.list.module');
+
+  // core.extension is the source of truth here, not moduleExists(). A module
+  // whose code has already been deleted still needs its registration removing,
+  // but moduleExists() reports FALSE for it, so filtering on that would skip
+  // exactly the case the defensive path below exists to handle.
+  $registered_modules = \Drupal::configFactory()->get('core.extension')->get('module') ?: [];
+  $installed = array_values(array_filter($modules, static function ($module) use ($registered_modules) {
+    return array_key_exists($module, $registered_modules);
+  }));
+
+  if (!$installed) {
+    \Drupal::messenger()->addMessage(t('The group flex and permissions stack is already uninstalled.'));
+    return;
+  }
+
+  // Delete the override records first, so the intent is recorded here rather
+  // than left to a module's own uninstall to imply.
+  if ($module_handler->moduleExists('group_permissions')) {
+    $storage = \Drupal::entityTypeManager()->getStorage('group_permission');
+    $records = $storage->loadMultiple();
+    if ($records) {
+      $storage->delete($records);
+      \Drupal::messenger()->addMessage(t('Deleted @count per-group permission override record(s); the default group roles now govern.', [
+        '@count' => count($records),
+      ]));
+    }
+  }
+
+  // Defensive path, as in 9016 to 9018: a module may be registered with no code
+  // on disk, either because this hook ships ahead of the code removal or
+  // because the removal landed first. module_installer cannot uninstall what it
+  // cannot load, so clear those registrations by hand.
+  $missing = array_values(array_filter($installed, static function ($module) use ($extension_list) {
+    return !$extension_list->exists($module);
+  }));
+
+  foreach ($missing as $module) {
+    // The shared helper also deletes the configuration the module owned, which
+    // a hand-cleared registration otherwise leaves behind to block the config
+    // import. oec_group_features and oec_group_flex both do leave config.
+    _eic_deploy_clear_missing_module_registration($module);
+  }
+
+  $uninstallable = array_values(array_diff($installed, $missing));
+  if ($uninstallable) {
+    \Drupal::service('module_installer')->uninstall($uninstallable);
+    \Drupal::messenger()->addMessage(t('Uninstalled @count module(s): @list.', [
+      '@count' => count($uninstallable),
+      '@list' => implode(', ', $uninstallable),
+    ]));
+  }
+
+  // This is the last hook before group_update_9200, which installs
+  // flexible_permissions and in doing so validates the entire module list. One
+  // module still registered without code on disk is enough to abort it, so
+  // sweep up whatever the targeted hooks above did not cover -- variationcache
+  // is the known case, dropped with group 1.6 because core 10.6 provides
+  // VariationCache itself and group 2.3.2 does not require the contrib module.
+  //
+  // This only ever removes a registration, never code or data, and the config
+  // import at the end of the deploy reinstates anything config/sync still
+  // lists. A module disappearing here that should not have is therefore
+  // recoverable -- and worth investigating, which is why each one is named.
+  $extension = \Drupal::configFactory()->getEditable('core.extension');
+  $registered = $extension->get('module') ?: [];
+  $extension_list = \Drupal::service('extension.list.module');
+  $swept = [];
+  foreach (array_keys($registered) as $module) {
+    if (!$extension_list->exists($module)) {
+      unset($registered[$module]);
+      \Drupal::service('update.update_hook_registry')->deleteInstalledVersion($module);
+      $swept[] = $module;
+    }
+  }
+  if ($swept) {
+    $extension->set('module', $registered)->save();
+    \Drupal::messenger()->addWarning(t('Cleared @count further registration(s) with no code on disk: @list. Check that each was meant to be removed.', [
+      '@count' => count($swept),
+      '@list' => implode(', ', $swept),
+    ]));
+  }
+}
+
+/**
+ * Delete the group relation types that only served unused group types.
+ */
+function eic_deploy_update_9020(&$sandbox) {
+  // Every custom GroupContentEnabler plugin on this site existed solely for the
+  // event, group, organisation and project group types, none of which holds a
+  // single group entity in any environment -- local has 2 groups and the TEST
+  // dump has 44, all research_institution. research_institution itself relates
+  // only through group_membership, which is a core Group plugin needing no
+  // custom code.
+  //
+  // So rather than port eight relation plugins to the Group 2 API for relations
+  // that have never been used, the relation types are deleted and the plugins
+  // with them. The four group types themselves are kept, with all their field
+  // and display configuration intact, and so is each type's group_membership
+  // relation -- those five are what config/sync ships.
+  $storage = \Drupal::entityTypeManager()->getStorage('group_content_type');
+
+  // Deleting a relation type cascades to its field configs, and
+  // FieldConfig::postDelete() has FieldDefinitionListener rebuild the field map
+  // across every bundle of the entity type. If bundle info still names a bundle
+  // whose relation type has already gone, GroupRelationshipStorage::getEntityClass()
+  // loads NULL for it and dies on an assertion. So the caches are cleared after
+  // each delete, which keeps the bundle list honest for the next one.
+  $bundle_info = \Drupal::service('entity_type.bundle.info');
+  $field_manager = \Drupal::service('entity_field.manager');
+  $bundle_info->clearCachedBundles();
+  $field_manager->clearCachedFieldDefinitions();
+
+  $deleted = 0;
+  $kept = [];
+  foreach (array_keys($storage->loadMultiple()) as $id) {
+    // Reload rather than trusting the list: earlier deletions in this loop may
+    // have cascaded.
+    $relation_type = $storage->load($id);
+    if (!$relation_type) {
+      continue;
+    }
+    // Keep every group_membership relation type. Those are the five that
+    // config/sync ships -- one per group type -- and Group recreates them by
+    // itself anyway. Deleting them here only to have the config import put
+    // them back churns bundles for no gain, and that churn is what trips
+    // GroupRelationshipStorage::getEntityClass() during the import.
+    if ($relation_type->getPluginId() === 'group_membership') {
+      $kept[] = $id;
+      continue;
+    }
+    // Guard: never delete a relation type that still holds content. Checked
+    // before writing this hook -- only the research_institution membership type
+    // has rows -- but a different environment could differ.
+    $count = \Drupal::entityQuery('group_content')
+      ->accessCheck(FALSE)
+      ->condition('type', $id)
+      ->count()
+      ->execute();
+    if ($count > 0) {
+      \Drupal::messenger()->addWarning(t('Kept relation type "@id": it still holds @count item(s).', [
+        '@id' => $id,
+        '@count' => $count,
+      ]));
+      continue;
+    }
+    $relation_type->delete();
+    $deleted++;
+    $bundle_info->clearCachedBundles();
+    $field_manager->clearCachedFieldDefinitions();
+  }
+
+  \Drupal::messenger()->addMessage(t('Deleted @deleted unused group relation type(s); kept @kept.', [
+    '@deleted' => $deleted,
+    '@kept' => implode(', ', $kept) ?: 'none',
+  ]));
+}
+
+/**
+ * Add the missing group_roles field to the research_institution membership.
+ */
+function eic_deploy_update_9021(&$sandbox) {
+  // Group expects every group_membership relation type to carry a group_roles
+  // field; GroupMembershipPostInstall::installGroupRolesField() creates it when
+  // the plugin is installed through the UI or API. The research_institution
+  // membership relation type has never had one -- it is absent at the fork
+  // commit and was never in config/sync -- so the field instance and its two
+  // default displays are missing for the one relation type that actually holds
+  // data in every environment.
+  //
+  // Under Group 1 this stayed latent because user 1 bypassed group access and
+  // nothing else assigned a role on a research_institution membership. Group 2
+  // removed the user-1 bypass, so GroupRoleStorage::loadByUserAndGroup() now
+  // reads group_roles on every permission calculation and throws
+  // "Field group_roles is unknown", turning every group page into a 500 for
+  // anyone whose access depends on a membership.
+  //
+  // This mirrors what the post-install handler would have created, so the
+  // resulting config is identical to a freshly installed relation type.
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $relationship_type_storage = $entity_type_manager->getStorage('group_content_type');
+  $fc_storage = $entity_type_manager->getStorage('field_config');
+  $fsc_storage = $entity_type_manager->getStorage('field_storage_config');
+  $efd_storage = $entity_type_manager->getStorage('entity_form_display');
+  $evd_storage = $entity_type_manager->getStorage('entity_view_display');
+
+  $field_storage = $fsc_storage->load('group_content.group_roles');
+  if (!$field_storage) {
+    \Drupal::messenger()->addWarning(t('No group_content.group_roles field storage; nothing to do.'));
+    return;
+  }
+
+  $added = [];
+  foreach ($relationship_type_storage->loadMultiple() as $id => $relationship_type) {
+    if ($relationship_type->getPluginId() !== 'group_membership') {
+      continue;
+    }
+    if ($fc_storage->load("group_content.$id.group_roles")) {
+      continue;
+    }
+
+    $fc_storage->save($fc_storage->create([
+      'field_storage' => $field_storage,
+      'bundle' => $id,
+      'label' => t('Roles'),
+      'settings' => [
+        'handler' => 'group_type:group_role',
+        'handler_settings' => [
+          'group_type_id' => $relationship_type->getGroupTypeId(),
+        ],
+      ],
+    ]));
+
+    $default_display_id = "group_content.$id.default";
+
+    if (!$form_display = $efd_storage->load($default_display_id)) {
+      $form_display = $efd_storage->create([
+        'targetEntityType' => 'group_content',
+        'bundle' => $id,
+        'mode' => 'default',
+        'status' => TRUE,
+      ]);
+    }
+    $efd_storage->save($form_display->setComponent('group_roles', [
+      'type' => 'options_buttons',
+    ]));
+
+    if (!$view_display = $evd_storage->load($default_display_id)) {
+      $view_display = $evd_storage->create([
+        'targetEntityType' => 'group_content',
+        'bundle' => $id,
+        'mode' => 'default',
+        'status' => TRUE,
+      ]);
+    }
+    $evd_storage->save($view_display->setComponent('group_roles', [
+      'label' => 'above',
+      'type' => 'entity_reference_label',
+      'settings' => [
+        'link' => 0,
+      ],
+    ]));
+
+    $added[] = $id;
+  }
+
+  \Drupal::messenger()->addMessage($added
+    ? t('Added the group_roles field to: @list.', ['@list' => implode(', ', $added)])
+    : t('Every group_membership relation type already had a group_roles field.'));
+}
+
+/**
+ * Grant 'access members management' on research_institution groups.
+ */
+function eic_deploy_update_9022(&$sandbox) {
+  // No research_institution group role has ever held this permission. Under
+  // Group 1 that was invisible because user 1 bypassed group access, so an
+  // administrator could always reach /group/N/members. Group 2 removed the
+  // bypass, which left members management unreachable for everyone on the one
+  // group type that holds data.
+  //
+  // Every other group type grants it to the same four roles, so
+  // research_institution is brought into line rather than given a new rule.
+  $roles = [
+    'research_institution-a416e6833' => 'Drupal admin',
+    'research_institution-bf4b46c3a' => 'Site Admin',
+    'research_institution-eca6128ca' => 'Content administrator',
+    'research_institution-owner' => 'Owner',
+  ];
+
+  $storage = \Drupal::entityTypeManager()->getStorage('group_role');
+  $granted = [];
+  foreach ($roles as $id => $label) {
+    /** @var \Drupal\group\Entity\GroupRoleInterface $role */
+    $role = $storage->load($id);
+    if (!$role) {
+      \Drupal::messenger()->addWarning(t('Group role @id ("@label") not found.', [
+        '@id' => $id,
+        '@label' => $label,
+      ]));
+      continue;
+    }
+    $permissions = $role->getPermissions();
+    if (in_array('access members management', $permissions, TRUE)) {
+      continue;
+    }
+    $permissions[] = 'access members management';
+    sort($permissions);
+    $role->set('permissions', $permissions)->save();
+    $granted[] = $id;
+  }
+
+  \Drupal::messenger()->addMessage($granted
+    ? t('Granted "access members management" to: @list.', ['@list' => implode(', ', $granted)])
+    : t('Every targeted role already had "access members management".'));
+}
+
+/**
+ * Drop the group permission of the removed stakeholder group relation.
+ */
+function eic_deploy_update_9023(&$sandbox) {
+  // eic_stakeholder's group_stakeholder relation plugins were deleted in
+  // eic_deploy_update_9020, and the controller, route provider and manager
+  // that served them have now gone too. The group permission they defined,
+  // 'access group_stakeholder overview', no longer exists, so the two project
+  // roles that granted it would be left referencing nothing.
+  $storage = \Drupal::entityTypeManager()->getStorage('group_role');
+  $cleaned = [];
+  foreach ($storage->loadMultiple() as $id => $role) {
+    $permissions = $role->getPermissions();
+    if (!in_array('access group_stakeholder overview', $permissions, TRUE)) {
+      continue;
+    }
+    $role->set('permissions', array_values(array_diff($permissions, ['access group_stakeholder overview'])))->save();
+    $cleaned[] = $id;
+  }
+
+  \Drupal::messenger()->addMessage($cleaned
+    ? t('Removed "access group_stakeholder overview" from: @list.', ['@list' => implode(', ', $cleaned)])
+    : t('No group role granted "access group_stakeholder overview".'));
+}
+
+/**
+ * Restore the grequest_status field storage.
+ */
+function eic_deploy_update_9024(&$sandbox) {
+  // field.storage.group_content.grequest_status is grequest's own
+  // config/install field, shared by every group type rather than owned by one.
+  // Deleting the group_membership_request relation types in
+  // eic_deploy_update_9020 cascaded to the storage itself, which left grequest
+  // incomplete: the module is enabled but the field its plugin needs is gone,
+  // so installing the plugin on research_institution -- which the membership
+  // request work will do -- would fail.
+  //
+  // grequest 2.2.5 ships it with persist_with_no_fields: true, exactly so the
+  // storage can exist while no relation type uses it yet.
+  if (\Drupal::entityTypeManager()->getStorage('field_storage_config')->load('group_content.grequest_status')) {
+    \Drupal::messenger()->addMessage(t('The grequest_status field storage already exists.'));
+    return;
+  }
+
+  $path = \Drupal::service('extension.list.module')->getPath('grequest') . '/config/install';
+  $source = new \Drupal\Core\Config\FileStorage($path);
+  $values = $source->read('field.storage.group_content.grequest_status');
+  if (!$values) {
+    \Drupal::messenger()->addWarning(t('Could not read grequest\'s field.storage.group_content.grequest_status.'));
+    return;
+  }
+
+  \Drupal\field\Entity\FieldStorageConfig::create($values)->save();
+  \Drupal::messenger()->addMessage(t('Restored the grequest_status field storage.'));
+}
+
+/**
+ * Give group owners the Owner group role on their own membership.
+ */
+function eic_deploy_update_9025(&$sandbox) {
+  // Every group type sets creator_roles to its own '-owner' role, so Group
+  // assigns it to the creator's membership at creation time. For
+  // research_institution that never happened: the membership relation type had
+  // no group_roles field until eic_deploy_update_9021, so there was nowhere to
+  // store it. The intent was always there in config; only the storage was
+  // missing.
+  //
+  // With the field restored, new groups will pick the role up by themselves.
+  // Existing memberships need it backfilled, or a group owner cannot reach
+  // members management on their own group -- under Group 1 that was hidden by
+  // the user 1 bypass, which Group 2 removed.
+  //
+  // Deliberately conservative: only the membership that belongs to the group's
+  // own owner, only when it currently carries no roles at all, and only when
+  // the group type names an owner role in creator_roles.
+  $relationship_storage = \Drupal::entityTypeManager()->getStorage('group_content');
+  $group_storage = \Drupal::entityTypeManager()->getStorage('group');
+
+  $updated = 0;
+  $skipped = 0;
+  foreach ($group_storage->loadMultiple() as $group) {
+    $creator_roles = $group->getGroupType()->getCreatorRoleIds();
+    if (empty($creator_roles)) {
+      continue;
+    }
+
+    foreach ($relationship_storage->loadByGroup($group, 'group_membership') as $membership) {
+      // Only the owner's own membership.
+      if ((int) $membership->get('entity_id')->target_id !== (int) $group->getOwnerId()) {
+        continue;
+      }
+      if (!$membership->hasField('group_roles')) {
+        $skipped++;
+        continue;
+      }
+      // Never touch a membership that already carries roles.
+      if (!$membership->get('group_roles')->isEmpty()) {
+        continue;
+      }
+
+      $membership->set('group_roles', $creator_roles);
+      $membership->save();
+      $updated++;
+    }
+  }
+
+  \Drupal::messenger()->addMessage(t('Assigned the creator role on @updated owner membership(s); skipped @skipped without a group_roles field.', [
+    '@updated' => $updated,
+    '@skipped' => $skipped,
+  ]));
+}
+
+/**
+ * Repoint views and the search index at the renamed relationship tables.
+ */
+function eic_deploy_update_9026(&$sandbox) {
+  // group_update_9203 renames the group_content base and data tables to
+  // group_relationship and group_relationship_field_data. Core's
+  // views_entity_type_update() rewrites a view's base_table when an entity
+  // type's tables change, but not every nested table key, and Group 2 ships an
+  // empty group.post_update.php. Views left pointing at the old names then
+  // break core's own views post-updates: HandlerBase::getEntityType() looks a
+  // relationship's table up in views data, gets nothing back, and the run dies
+  // on "A valid cache entry key is required".
+  //
+  // The config import at the end of the deploy would fix these views anyway --
+  // config/sync already has the corrected copies -- but post-updates run before
+  // it, so they have to be made consistent here.
+  //
+  // Only `table` and `base_table` values are rewritten. The entity type IDs are
+  // unchanged in Group 2, so `entity_type: group_content`, relationship IDs and
+  // plugin IDs must all be left exactly as they are.
+  $renames = [
+    'group_content_field_data' => 'group_relationship_field_data',
+    'group_content' => 'group_relationship',
+  ];
+
+  $repoint = function (array &$data) use (&$repoint, $renames): int {
+    $changed = 0;
+    foreach ($data as $key => &$value) {
+      if (is_array($value)) {
+        $changed += $repoint($value);
+      }
+      elseif (($key === 'table' || $key === 'base_table') && is_string($value) && isset($renames[$value])) {
+        $value = $renames[$value];
+        $changed++;
+      }
+    }
+    return $changed;
+  };
+
+  $config_factory = \Drupal::configFactory();
+  $views = [];
+  foreach ($config_factory->listAll('views.view.') as $name) {
+    $config = $config_factory->getEditable($name);
+    $data = $config->getRawData();
+    if ($repoint($data) > 0) {
+      $config->setData($data)->save(TRUE);
+      $views[] = substr($name, 11);
+    }
+  }
+
+  // Anything recreated locally gets a freshly generated UUID, and config entity
+  // identity is the UUID -- so to the config importer the local object and the
+  // committed one are different things, and it deletes one before creating the
+  // other. That is destructive in two distinct ways:
+  //
+  //  - Deleting a relation type rebuilds the field map across bundles, and
+  //    GroupRelationshipStorage::getEntityClass() then asserts on the bundle
+  //    that has just gone, which aborts the import.
+  //  - Deleting and recreating a *field* marks its stored values deleted. The
+  //    44 Owner role assignments eic_deploy_update_9025 had just written were
+  //    being silently discarded that way, leaving every group owner without
+  //    the role and so without access to their own group's members.
+  //
+  // Group recreates a group_membership relation type per group type by itself,
+  // and eic_deploy_update_9021 recreates the group_roles field and its two
+  // displays. Adopting the committed UUID first makes the importer see one
+  // unchanged object and leave it, and its data, alone.
+  $sync = \Drupal::service('config.storage.sync');
+  $realigned = [];
+  $prefixes = [
+    'group.content_type.',
+    'field.field.group_content.',
+    'core.entity_form_display.group_content.',
+    'core.entity_view_display.group_content.',
+  ];
+  foreach ($prefixes as $prefix) {
+    foreach ($config_factory->listAll($prefix) as $name) {
+      $source = $sync->read($name);
+      if (!$source || empty($source['uuid'])) {
+        continue;
+      }
+      $config = $config_factory->getEditable($name);
+      if ($config->isNew() || $config->get('uuid') === $source['uuid']) {
+        continue;
+      }
+      $config->set('uuid', $source['uuid'])->save(TRUE);
+      $realigned[] = $name;
+    }
+  }
+
+  // The group_content entity_id base field changed type from entity_reference
+  // to group_relationship_target, so search_api can no longer resolve the
+  // reverse-reference property one index field was built on. Left in place it
+  // throws a SearchApiException on every views data rebuild. It is declared
+  // once and read nowhere.
+  $index = $config_factory->getEditable('search_api.index.global');
+  $removed_field = FALSE;
+  if (!$index->isNew()) {
+    $fields = $index->get('field_settings') ?: [];
+    if (isset($fields['content__group_content__entity_id_gid'])) {
+      unset($fields['content__group_content__entity_id_gid']);
+      $index->set('field_settings', $fields)->save(TRUE);
+      $removed_field = TRUE;
+    }
+  }
+
+  \Drupal::messenger()->addMessage($views
+    ? t('Repointed @count view(s) at the renamed relationship tables: @list.', [
+      '@count' => count($views),
+      '@list' => implode(', ', $views),
+    ])
+    : t('No views needed repointing at the renamed relationship tables.'));
+
+  if ($realigned) {
+    \Drupal::messenger()->addMessage(t('Realigned @count config UUID(s) with config/sync: @list.', [
+      '@count' => count($realigned),
+      '@list' => implode(', ', $realigned),
+    ]));
+  }
+
+  if ($removed_field) {
+    \Drupal::messenger()->addMessage(t('Removed the unresolvable reverse-reference field from the Global search index.'));
+  }
+}
+
+/**
+ * Uninstall the group "features" base field left behind by oec_group_features.
+ */
+function eic_deploy_update_9027(&$sandbox) {
+  // oec_group_features gave every group a `features` base field (list_string,
+  // unlimited cardinality) through hook_entity_base_field_info(). The module
+  // was removed with the rest of the group flex stack, but the field's
+  // definition stays in the "last installed" repository, and its two tables
+  // (group__features, group_revision__features) stay in the database. Core
+  // reports that as a permanent "Mismatched entity and/or field definitions"
+  // error on the status report: "The Features field needs to be uninstalled."
+  //
+  // Nothing reads the field any more. The only code left that names it is in
+  // the deprecated eic_community theme, which is not in the active theme chain.
+  $entity_type_id = 'group';
+  $field_name = 'features';
+
+  $definitions = \Drupal::service('entity.last_installed_schema.repository')
+    ->getLastInstalledFieldStorageDefinitions($entity_type_id);
+  if (!isset($definitions[$field_name])) {
+    \Drupal::messenger()->addMessage(t('The "@field" field is already uninstalled from "@type".', [
+      '@field' => $field_name,
+      '@type' => $entity_type_id,
+    ]));
+    return;
+  }
+
+  // If live code still provides the field, uninstalling it would only bring
+  // the mismatch straight back, and drop data that is still wanted. Leave it.
+  \Drupal::service('entity_field.manager')->clearCachedFieldDefinitions();
+  $current = \Drupal::service('entity_field.manager')->getBaseFieldDefinitions($entity_type_id);
+  if (isset($current[$field_name])) {
+    \Drupal::messenger()->addWarning(t('The "@field" field on "@type" is still provided by "@provider"; not uninstalling it.', [
+      '@field' => $field_name,
+      '@type' => $entity_type_id,
+      '@provider' => $current[$field_name]->getProvider(),
+    ]));
+    return;
+  }
+
+  // Core drops the tables if they are empty. If they hold values it renames
+  // them to deleted-field tables and lets cron purge them, so say which it was.
+  $rows = 0;
+  $schema = \Drupal::database()->schema();
+  foreach (['group__features', 'group_revision__features'] as $table) {
+    if ($schema->tableExists($table)) {
+      $rows += (int) \Drupal::database()->select($table)->countQuery()->execute()->fetchField();
+    }
+  }
+
+  \Drupal::entityDefinitionUpdateManager()->uninstallFieldStorageDefinition($definitions[$field_name]);
+
+  \Drupal::messenger()->addMessage($rows
+    ? t('Uninstalled the "@field" field from "@type"; @rows stored value(s) are queued for purge by cron.', [
+      '@field' => $field_name,
+      '@type' => $entity_type_id,
+      '@rows' => $rows,
+    ])
+    : t('Uninstalled the empty "@field" field from "@type".', [
+      '@field' => $field_name,
+      '@type' => $entity_type_id,
+    ]));
 }

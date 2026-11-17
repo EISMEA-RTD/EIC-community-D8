@@ -5,7 +5,6 @@ namespace Drupal\eic_groups;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\group\Entity\GroupInterface;
-use Drupal\group_permissions\Entity\GroupPermissionInterface;
 
 /**
  * Interface EICGroupsHelperInterface to implement in EICGroupHeader.
@@ -62,43 +61,5 @@ interface EICGroupsHelperInterface {
    *   The book page nid or NULL if not found.
    */
   public function getGroupBookPage(GroupInterface $group);
-
-  /**
-   * Add role permissions to a groupPermission object without saving.
-   *
-   * @param \Drupal\group_permissions\Entity\GroupPermissionInterface $group_permissions
-   *   The group permission object.
-   * @param string $role
-   *   The user role ID.
-   * @param array $role_permissions
-   *   Associative array of permissions.
-   *
-   * @return \Drupal\group_permissions\Entity\GroupPermissionInterface
-   *   The updated group permissions.
-   */
-  public function addRolePermissionsToGroup(GroupPermissionInterface $group_permissions, string $role, array $role_permissions);
-
-  /**
-   * Remove role permissions from a certain group without saving.
-   *
-   * @param \Drupal\group_permissions\Entity\GroupPermissionInterface $group_permissions
-   *   The group permission object.
-   * @param string $role
-   *   The user role ID.
-   * @param array $role_permissions
-   *   Associative array of permissions.
-   *
-   * @return \Drupal\group_permissions\Entity\GroupPermissionInterface
-   *   The updated group permissions.
-   */
-  public function removeRolePermissionsFromGroup(GroupPermissionInterface $group_permissions, string $role, array $role_permissions);
-
-  /**
-   * Saves a GroupPermission object.
-   *
-   * @param \Drupal\group_permissions\Entity\GroupPermissionInterface $group_permissions
-   *   The GroupPermission object to be saved.
-   */
-  public function saveGroupPermissions(GroupPermissionInterface $group_permissions);
 
 }

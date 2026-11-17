@@ -1,0 +1,243 @@
+diff --git a/src/Plugin/search_api/processor/AddressAbbreviationsToFullForm.php b/src/Plugin/search_api/processor/AddressAbbreviationsToFullForm.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..a2a7c14b6bf6024df2cfc3eff31361dd82f7c030
+--- /dev/null
++++ b/src/Plugin/search_api/processor/AddressAbbreviationsToFullForm.php
+@@ -0,0 +1,237 @@
++<?php
++
++namespace Drupal\address\Plugin\search_api\processor;
++
++use CommerceGuys\Addressing\Country\CountryRepositoryInterface;
++use CommerceGuys\Addressing\Subdivision\SubdivisionRepositoryInterface;
++use Drupal\Component\Utility\Html;
++use Drupal\Core\Form\FormStateInterface;
++use Drupal\search_api\Item\FieldInterface;
++use Drupal\search_api\Item\ItemInterface;
++use Drupal\search_api\Processor\FieldsProcessorPluginBase;
++use Symfony\Component\DependencyInjection\ContainerInterface;
++
++/**
++ * Converts Address Components Code Values to Full Text Form.
++ * e.g., country_code US to the United States,
++ * administrative_area IL to Illinois.
++ *
++ * @SearchApiProcessor(
++ *   id = "address_abbreviations_to_full_form",
++ *   label = @Translation("Address Field : Convert Abbreviations into Full Text Form."),
++ *   description = @Translation("Converts abbreviations to its full text form. Components supported are country_code, administrative_area, locality, and dependent_locality"),
++ *   stages = {
++ *     "pre_index_save" = 0,
++ *     "preprocess_index" = -20,
++ *     "preprocess_query" = -20
++ *   }
++ * )
++ */
++class AddressAbbreviationsToFullForm extends FieldsProcessorPluginBase {
++
++  /**
++   * The subdivision repository.
++   */
++  protected CountryRepositoryInterface $countryRepository;
++
++  /**
++   * The subdivision repository.
++   */
++  protected SubdivisionRepositoryInterface $subdivisionRepository;
++
++  /**
++   * The address module field list of components supported by this processor.
++   */
++  protected array $supportedComponents = [
++    'administrative_area',
++    'locality',
++    'dependent_locality',
++  ];
++
++  /**
++     * {@inheritdoc}
++     */
++  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
++    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
++    $instance->countryRepository = $container->get('address.country_repository');
++    $instance->subdivisionRepository = $container->get('address.subdivision_repository');
++    return $instance;
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
++    $fields = $this->index->getFields();
++    foreach ($fields as $name => $field) {
++      $property_path = explode(':', $field->getPropertyPath());
++      $component = end($property_path);
++      if (!in_array($component, $this->supportedComponents)
++        && (count($property_path) > 1 || !in_array($field->getDataDefinition()->getDataType(), ['field_item:address', 'field_item:address_country']))
++      ) {
++        continue;
++      }
++      $form[$name] = [
++        '#type' => 'fieldset',
++        '#title' => $name,
++        '#description' => Html::escape($field->getPrefixedLabel()),
++        '#collapsible' => FALSE,
++        '#collapsed' => FALSE,
++      ];
++      $form[$name]['enable'] = [
++        '#type' => 'checkbox',
++        '#title' => $this->t('Enable'),
++        '#default_value' => $this->configuration[$name]['enable'] ?? FALSE,
++      ];
++      $form[$name]['concat'] = [
++        '#type' => 'checkbox',
++        '#title' => $this->t('Concat'),
++        '#description' => $this->t('Combine code and full text using a dash separator. eg. {abbreviation} - {full text}'),
++        '#default_value' => $this->configuration[$name]['concat'] ?? FALSE,
++      ];
++    }
++    return $form;
++  }
++
++  /**
++     * {@inheritdoc}
++     */
++  public function preprocessIndexItems(array $items): void {
++    foreach ($items as $item) {
++      foreach ($item->getFields() as $name => $field) {
++        $this->preprocessIndexField($item, $name, $field);
++      }
++    }
++  }
++
++  /**
++     * Preprocesses fields from search items for indexing.
++     *
++     * @param \Drupal\search_api\Item\ItemInterface $item
++     *   The search item.
++     * @param string $name
++     *   The machine name of the field.
++     * @param \Drupal\search_api\Item\FieldInterface $field
++     *   A field on the search item.
++     *
++     * @throws \Drupal\search_api\SearchApiException
++     */
++  private function preprocessIndexField(ItemInterface $item, string $name, FieldInterface $field): void {
++    // Skip field if not enabled in processor config.
++    if (!in_array($name, array_keys($this->configuration))
++      || !isset($this->configuration[$name])
++      || empty($this->configuration[$name]['enable'])
++    ) {
++      return;
++    }
++
++    [$field_name, $component, $reference_field_name, $reference_component] = array_pad(explode(':', $field->getPropertyPath()), 4, '');
++    $component = $component ?: 'country_code';
++    $entity = $item->getOriginalObject()->getValue();
++    $entity_field_values = [];
++
++    if (!$entity->hasField($field_name) || $entity->get($field_name)->isEmpty()) {
++      return;
++    }
++
++    // Get field values from a referenced entity or main entity.
++    if ($reference_field_name && $reference_component) {
++      $referenced_entities = $entity->get($field_name)->referencedEntities();
++      foreach ($referenced_entities as $referenceEntity) {
++        if (!$referenceEntity->hasField($reference_field_name)
++          || $referenceEntity->get($reference_field_name)->isEmpty()
++        ) {
++          continue;
++        }
++        $reference_entity_field_values = $referenceEntity->get($reference_field_name)->getValue();
++        $entity_field_values = array_merge($entity_field_values, $reference_entity_field_values);
++      }
++    }
++    else {
++      $entity_field_values = $entity->get($field_name)->getValue();
++    }
++
++    // Override the targeted component code value with a full text value.
++    $values = $field->getValues();
++    $target = $reference_component ?: $component;
++    foreach ($entity_field_values as $key => $field_value) {
++      $new_value = $this->triangulateCodeToFulltext($field_value, $target, $this->configuration[$name]);
++      if (!isset($new_value)) {
++        continue;
++      }
++      if (is_scalar($values[$key])) {
++        $values[$key] = $new_value;
++      }
++      else {
++        $values[$key]->setText(strtolower($new_value));
++        $values[$key]->setOriginalText($new_value);
++        $values[$key]->setProperty('lowercase', TRUE);
++      }
++    }
++    $field->setValues($values);
++  }
++
++  /**
++   * Retrieves full text value of an address field component.
++   *
++   * @param array $field_value
++   *   The address field value array.
++   * @param string $target
++   *   The address field component.
++   * @param array $configuration
++   *   The preprocessor configuration for the field.
++   *
++   * @return string|null
++   *   Full text value of an addressfield component code value.
++   */
++  private function triangulateCodeToFulltext(array $field_value, string $target, array $configuration): ?string {
++    $current = $result = $field_value[$target] ?? ($field_value['value'] ?? NULL);
++    if (!isset($result)) {
++      return $result;
++    }
++    $countries = $subdivisions = [];
++    switch ($target) {
++      case 'country_code':
++        $countries = $this->countryRepository->getAll();
++        break;
++
++      case 'administrative_area':
++        $subdivisions = $this->subdivisionRepository->getAll([$field_value['country_code']]);
++        break;
++
++      case 'locality':
++        $subdivisions = $this->subdivisionRepository->getAll([$field_value['country_code'], $field_value['administrative_area']]);
++        break;
++
++      case 'dependent_locality':
++        $subdivisions = $this->subdivisionRepository->getAll([$field_value['country_code'], $field_value['administrative_area'], $field_value['locality']]);
++        break;
++    }
++    if ($target == 'country_code') {
++      if (empty($countries[$current])) {
++        return $result;
++      }
++      $code = $countries[$current]->getCountryCode();
++      $name = $countries[$current]->getName();
++    }
++    elseif (in_array($target, $this->supportedComponents, TRUE)) {
++      if (empty($subdivisions[$current])) {
++        return $result;
++      }
++      $code = $subdivisions[$current]->getCode();
++      $name = $subdivisions[$current]->getName();
++    }
++    else {
++      return $result;
++    }
++    if ($configuration['concat'] && ($current != $name)) {
++      $result = $code . ' - ' . $name;
++    }
++    elseif (!$configuration['concat'] && ($current != $name)) {
++      $result = $name;
++    }
++
++    return $result;
++  }
++
++}

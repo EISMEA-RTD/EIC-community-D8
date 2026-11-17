@@ -250,7 +250,7 @@ class GroupTokens implements ContainerInjectionInterface {
           // If stakeholder belongs to a group.
           if ($group_contents = $this->entityTypeManager->getStorage('group_content')
             ->loadByEntity($stakeholder)) {
-            /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+            /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
             $group_content = reset($group_contents);
 
             $has_translation = $group_content->hasTranslation($stakeholder->language()
@@ -311,7 +311,7 @@ class GroupTokens implements ContainerInjectionInterface {
 
           // If node belongs to a group.
           if ($group_contents = $this->entityTypeManager->getStorage('group_content')->loadByEntity($node)) {
-            /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+            /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
             $group_content = reset($group_contents);
 
             $has_translation = $group_content->hasTranslation($node->language()->getId());
@@ -437,7 +437,7 @@ class GroupTokens implements ContainerInjectionInterface {
         continue;
       }
 
-      /** @var \Drupal\group\Entity\GroupContentInterface[] $user_memberships */
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface[] $user_memberships */
       $user_memberships = $this->entityTypeManager->getStorage('group_content')
         ->loadByProperties([
           'type' => "{$group_type->id()}-group_membership",

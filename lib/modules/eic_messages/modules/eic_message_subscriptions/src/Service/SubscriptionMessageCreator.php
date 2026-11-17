@@ -9,7 +9,7 @@ use Drupal\eic_flags\FlagType;
 use Drupal\eic_message_subscriptions\MessageSubscriptionTypes;
 use Drupal\eic_message_subscriptions\SubscriptionOperationTypes;
 use Drupal\flag\FlaggingInterface;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\message\Entity\Message;
 
@@ -85,7 +85,7 @@ class SubscriptionMessageCreator {
           'field_topic_term' => $topics,
         ]);
 
-        $group_contents = GroupContent::loadByEntity($entity);
+        $group_contents = GroupRelationship::loadByEntity($entity);
 
         if (!empty($group_contents)) {
           $group_content = reset($group_contents);

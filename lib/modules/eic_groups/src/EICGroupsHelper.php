@@ -27,21 +27,15 @@ use Drupal\eic_organisations\Constants\Organisations;
 use Drupal\eic_overviews\GroupOverviewPages;
 use Drupal\eic_user\UserHelper;
 use Drupal\group\Entity\Group;
-use Drupal\group\Entity\GroupContent;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationship;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\Entity\GroupTypeInterface;
 use Drupal\group\GroupMembership;
-use Drupal\group\Plugin\GroupContentEnablerManagerInterface;
-use Drupal\group_flex\Plugin\GroupVisibilityManager;
-use Drupal\group_permissions\Entity\GroupPermissionInterface;
+use Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface;
 use Drupal\message\MessageInterface;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
-use Drupal\oec_group_flex\GroupVisibilityDatabaseStorage;
-use Drupal\oec_group_flex\OECGroupFlexHelper;
-use Drupal\oec_group_flex\Plugin\CustomRestrictedVisibilityInterface;
-use Drupal\oec_group_flex\Plugin\GroupVisibility\CustomRestrictedVisibility;
 use Drupal\taxonomy\TermInterface;
 
 /**
@@ -108,20 +102,6 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
   protected $time;
 
   /**
-   * The oec_group_flex.helper service.
-   *
-   * @var \Drupal\oec_group_flex\OECGroupFlexHelper
-   */
-  protected $oecGroupFlexHelper;
-
-  /**
-   * The group visibility manager service.
-   *
-   * @var \Drupal\group_flex\Plugin\GroupVisibilityManager
-   */
-  protected $groupVisibilityManager;
-
-  /**
    * The current path service.
    *
    * @var \Drupal\Core\Path\CurrentPathStack
@@ -131,16 +111,9 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
   /**
    * The group content enabler manager service.
    *
-   * @var \Drupal\group\Plugin\GroupContentEnablerManagerInterface
+   * @var \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface
    */
   protected $groupContentPluginManager;
-
-  /**
-   * The group visibility storage.
-   *
-   * @var \Drupal\oec_group_flex\GroupVisibilityDatabaseStorage
-   */
-  protected $groupVisibilityStorage;
 
   /**
    * Constructs a new EventsHelperService object.
@@ -155,18 +128,12 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    *   The current user service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
    *   The time service.
-   * @param \Drupal\oec_group_flex\OECGroupFlexHelper $oec_group_flex_helper
-   *   The oec_group_flex.helper service.
-   * @param \Drupal\group_flex\Plugin\GroupVisibilityManager $group_visibility_manager
-   *   The group visibility manager service.
    * @param \Drupal\Core\Path\CurrentPathStack $current_path
    *   The current path service.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager service.
-   * @param \Drupal\group\Plugin\GroupContentEnablerManagerInterface $group_content_enabler_manager
+   * @param \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface $group_content_enabler_manager
    *   The group content enabler manager service.
-   * @param GroupVisibilityDatabaseStorage $group_visibility_storage
-   *   The group visibility storage.
    */
   public function __construct(
     Connection $database,
@@ -174,24 +141,18 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
     ModuleHandlerInterface $module_handler,
     AccountProxyInterface $current_user,
     TimeInterface $time,
-    OECGroupFlexHelper $oec_group_flex_helper,
-    GroupVisibilityManager $group_visibility_manager,
     CurrentPathStack $current_path,
     EntityTypeManagerInterface $entity_type_manager,
-    GroupContentEnablerManagerInterface $group_content_enabler_manager,
-    GroupVisibilityDatabaseStorage $group_visibility_storage
+    GroupRelationTypeManagerInterface $group_content_enabler_manager
   ) {
     $this->database = $database;
     $this->routeMatch = $route_match;
     $this->moduleHandler = $module_handler;
     $this->currentUser = $current_user;
     $this->time = $time;
-    $this->oecGroupFlexHelper = $oec_group_flex_helper;
-    $this->groupVisibilityManager = $group_visibility_manager;
     $this->currentPath = $current_path;
     $this->entityTypeManager = $entity_type_manager;
     $this->groupContentPluginManager = $group_content_enabler_manager;
-    $this->groupVisibilityStorage = $group_visibility_storage;
   }
 
   /**
@@ -406,7 +367,7 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
       return $group;
     }
 
-    if ($entity instanceof GroupContentInterface) {
+    if ($entity instanceof GroupRelationshipInterface) {
       return $entity->getGroup();
     }
 
@@ -416,11 +377,11 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
         return FALSE;
       }
       // Load all the group content for this entity.
-      $group_contents = GroupContent::loadByEntity($entity);
+      $group_contents = GroupRelationship::loadByEntity($entity);
 
       // We look for the first group_node group_content entity.
       foreach ($group_contents as $group_content_item) {
-        if (strpos($group_content_item->getGroupContentType()->getContentPluginId(), 'group_node:') === 0) {
+        if (strpos($group_content_item->getRelationshipType()->getPluginId(), 'group_node:') === 0) {
           $group = $group_content_item->getGroup();
           break;
         }
@@ -442,8 +403,8 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
     CacheableMetadata $cacheable_metadata = NULL
   ) {
     $operation_links = [];
-    foreach ($group->getGroupType()->getInstalledContentPlugins() as $plugin) {
-      /** @var \Drupal\group\Plugin\GroupContentEnablerInterface $plugin */
+    foreach ($group->getGroupType()->getInstalledPlugins() as $plugin) {
+      /** @var \Drupal\group\Plugin\Group\Relation\GroupRelationInterface $plugin */
       if (!empty($limit_entities) && !in_array($plugin->getEntityTypeId(), $limit_entities)) {
         continue;
       }
@@ -483,16 +444,15 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    * {@inheritdoc}
    */
   public function getGroupBookPage(GroupInterface $group) {
-    if (!$group->getGroupType()->hasContentPlugin('group_node:book')) {
+    if (!$group->getGroupType()->hasPlugin('group_node:book')) {
       return NULL;
     }
 
-    $group_content_type_id = $group
-      ->getGroupType()
-      ->getContentPlugin('group_node:book')
-      ->getContentTypeConfigId();
+    $group_content_type_id = $this->entityTypeManager
+      ->getStorage('group_content_type')
+      ->getRelationshipTypeId($group->bundle(), 'group_node:book');
 
-    $query = $this->database->select('group_content_field_data', 'gp');
+    $query = $this->database->select('group_relationship_field_data', 'gp');
     $query->condition('gp.type', $group_content_type_id);
     $query->condition('gp.gid', $group->id());
     $query->join('book', 'b', 'gp.entity_id = b.nid');
@@ -570,16 +530,12 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    *   An array of Group entities.
    */
   public function getGroupsByVisibility(string $visibility) {
-    $gids = $this->database->select('oec_group_visibility')
-      ->fields('oec_group_visibility', ['gid'])
-      ->condition('type', $visibility)
-      ->execute()->fetchAllAssoc('gid', \PDO::FETCH_ASSOC);
-
-    if (empty($gids)) {
-      return [];
-    }
-
-    return Group::loadMultiple(array_keys($gids));
+    // Group visibility came from oec_group_flex, which this project no longer
+    // installs, and its oec_group_visibility table is gone. The table never
+    // held a row in any environment -- it is empty here and has no INSERT
+    // statements in the TEST dump -- so this already returned an empty array
+    // every time it was called. Querying the dropped table would now throw.
+    return [];
   }
 
   /**
@@ -647,23 +603,6 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
   }
 
   /**
-   * Returns the visibility label for the given group entity.
-   *
-   * @param \Drupal\group\Entity\GroupInterface $group
-   *   The group entity to check.
-   * @param string $format
-   *   The format of the label. Can be 'default' or 'short'. Defaults to
-   *   'default'.
-   *
-   * @return string
-   *   The visibility label.
-   */
-  public function getGroupVisibilityLabel(GroupInterface $group, string $format = 'default') {
-    $group_visibility = $this->oecGroupFlexHelper->getGroupVisibilitySettings($group);
-    return $this->getGroupFlexPluginTitle('visibility', $group_visibility['plugin_id'], $format);
-  }
-
-  /**
    * Returns the list of installed plugins for a group type.
    *
    * @param \Drupal\group\Entity\GroupTypeInterface|null $group_type
@@ -694,7 +633,7 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
     foreach ($this->entityTypeManager->getStorage('node_type')->loadMultiple() as $node_type) {
       if ($this->isGroupTypePluginEnabled($group_type, 'group_node', $node_type->id())) {
         // @todo Get real content type config id?
-        // @see \Drupal\group\Plugin\GroupContentEnablerBase::getContentTypeConfigId().
+        // @see \Drupal\group\Entity\GroupRelationshipType::createFromPlugin().
         $plugins[] = $group_type->id() . '-group_node-' . $node_type->id();
       }
     }
@@ -743,77 +682,22 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    *
    * @param \Drupal\group\Entity\GroupInterface $group
    *   The group object.
-   * @param array $filters
-   *   Filters to apply to the query. See GroupInterface::getContent().
    *
    * @return \Drupal\node\NodeInterface[]
    *   An array of node entities.
    */
-  public function getGroupNodes(GroupInterface $group, array $filters = []) {
+  public function getGroupNodes(GroupInterface $group) {
     $content = [];
     foreach ($this->getGroupTypeEnabledPlugins($group->getGroupType()) as $plugin_id) {
       if (strpos($plugin_id, 'group_node') !== 0) {
         continue;
       }
-      /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
-      foreach ($group->getContent($plugin_id, $filters) as $group_content) {
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
+      foreach ($group->getRelationships($plugin_id) as $group_content) {
         $content[] = $group_content->getEntity();
       }
     }
     return $content;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function addRolePermissionsToGroup(
-    GroupPermissionInterface $group_permissions,
-    string $role,
-    array $role_permissions
-  ) {
-    $permissions = $group_permissions->getPermissions();
-    foreach ($role_permissions as $permission) {
-      if (!array_key_exists($role, $permissions) || !in_array($permission, $permissions[$role], TRUE)) {
-        $permissions[$role][] = $permission;
-      }
-    }
-    $group_permissions->setPermissions($permissions);
-    return $group_permissions;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function removeRolePermissionsFromGroup(
-    GroupPermissionInterface $group_permissions,
-    string $role,
-    array $role_permissions
-  ) {
-    $permissions = $group_permissions->getPermissions();
-    foreach ($role_permissions as $permission) {
-      if (array_key_exists($role, $permissions) || in_array($permission, $permissions[$role], TRUE)) {
-        $permissions[$role] = array_diff($permissions[$role], [$permission]);
-      }
-    }
-    $group_permissions->setPermissions($permissions);
-    return $group_permissions;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function saveGroupPermissions(GroupPermissionInterface $group_permissions) {
-    $violations = $group_permissions->validate();
-
-    if (count($violations) > 0) {
-      $message = '';
-      foreach ($violations as $violation) {
-        $message .= "\n" . $violation->getMessage();
-      }
-      throw new EntityStorageException('Group permissions were not saved correctly, because:' . $message);
-    }
-
-    $group_permissions->save();
   }
 
   /**
@@ -828,84 +712,17 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    *   The group for which the check is.
    */
   public function hasContent(GroupInterface $group) {
-    $query = $this->database->select('group_content_field_data', 'gp');
+    $query = $this->database->select('group_relationship_field_data', 'gp');
+    $relationship_type_storage = $this->entityTypeManager->getStorage('group_content_type');
     $query->condition('gp.type', [
-      $group->getGroupType()->getContentPlugin('group_node:discussion')->getContentTypeConfigId(),
-      $group->getGroupType()->getContentPlugin('group_node:document')->getContentTypeConfigId(),
-      $group->getGroupType()->getContentPlugin('group_node:wiki_page')->getContentTypeConfigId(),
+      $relationship_type_storage->getRelationshipTypeId($group->bundle(), 'group_node:discussion'),
+      $relationship_type_storage->getRelationshipTypeId($group->bundle(), 'group_node:document'),
+      $relationship_type_storage->getRelationshipTypeId($group->bundle(), 'group_node:wiki_page'),
     ], 'IN');
     $query->condition('gp.gid', $group->id());
     $query->fields('gp', ['id']);
 
     return !empty($query->execute()->fetchAll(\PDO::FETCH_OBJ));
-  }
-
-  /**
-   * Checks if the current page is a group under review page.
-   *
-   * @return \Drupal\group\Entity\Group|bool
-   *   Returns the group if is blocked and the user can view it.
-   */
-  public function isGroupUnderReviewPage(?GroupInterface $group) {
-    $route_name = $this->routeMatch->getRouteName();
-
-    if (!$route_name === 'system.403') {
-      return FALSE;
-    }
-
-    if (!$group) {
-      if (!($group = $this->isGroupPage())) {
-        return $group;
-      }
-    }
-
-    $is_group_page = $group;
-
-    $moderation_state = $group->get('moderation_state')->value;
-
-    // If group is not blocked, we return FALSE.
-    if ($moderation_state !== GroupsModerationHelper::GROUP_BLOCKED_STATE) {
-      return FALSE;
-    }
-
-    // If user doesn't have permission to view the group, we return FALSE.
-    if (!$group->hasPermission('view group', $this->currentUser->getAccount())) {
-      return FALSE;
-    }
-
-    $group_visibility_settings = $this->oecGroupFlexHelper->getGroupVisibilitySettings($group);
-
-    // If group visibility is not custom restricted, it means the user can
-    // access the group but the group is under review.
-    if ($group_visibility_settings['plugin_id'] !== GroupVisibilityType::GROUP_VISIBILITY_CUSTOM_RESTRICTED) {
-      return $is_group_page;
-    }
-
-    $group_visibility_plugin = $this->groupVisibilityManager->createInstance($group_visibility_settings['plugin_id']);
-
-    if ($group_visibility_plugin instanceof CustomRestrictedVisibility) {
-      $is_group_page = FALSE;
-
-      // Loop through all of the options, they are keyed by pluginId.
-      // If we have a match and the plugin returns not neutral we return the
-      // it means the user has access to the group but the group is under
-      // review.
-      foreach (array_keys($group_visibility_settings['settings']->getOptions()) as $pluginId) {
-        $group_custom_restricted_visibility_plugins = $group_visibility_plugin->getCustomRestrictedPlugins();
-        $plugin = isset($group_custom_restricted_visibility_plugins[$pluginId]) ? $group_custom_restricted_visibility_plugins[$pluginId] : NULL;
-
-        if ($plugin instanceof CustomRestrictedVisibilityInterface) {
-          $pluginAccess = $plugin->hasViewAccess($group, $this->currentUser->getAccount(),
-            $group_visibility_settings['settings']);
-          if (!$pluginAccess->isNeutral()) {
-            $is_group_page = $group;
-            break;
-          }
-        }
-      }
-    }
-
-    return $is_group_page;
   }
 
   /**
@@ -1080,7 +897,7 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
     if ($entity instanceof NodeInterface) {
       $group_contents = \Drupal::entityTypeManager()->getStorage('group_content')->loadByEntity($entity);
       if (!empty($group_contents)) {
-        /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+        /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
         $group_content = reset($group_contents);
 
         return $group_content->getGroup();
@@ -1112,7 +929,7 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
       $entity = $entity->getCommentedEntity();
     }
 
-    if ($entity instanceof GroupContentInterface) {
+    if ($entity instanceof GroupRelationshipInterface) {
       $entity = $entity->getGroup();
     }
 
@@ -1123,7 +940,7 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
         return FALSE;
       }
 
-      /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
       $group_content = reset($group_contents);
       $group = $group_content->getGroup();
 
@@ -1138,31 +955,6 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
   }
 
   /**
-   * Return if the group itself or content from group is archived.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface|NULL $entity
-   *
-   * @return bool
-   */
-  public function isGroupSensitive(?EntityInterface $entity) {
-    if (!$entity instanceof EntityInterface) {
-      return FALSE;
-    }
-
-    if ($entity instanceof CommentInterface) {
-      $entity = $entity->getCommentedEntity();
-    }
-
-    if ($entity instanceof GroupContentInterface) {
-      $entity = $entity->getGroup();
-    }
-
-    $group_visibility = $this->groupVisibilityStorage->load($entity->id());
-
-    return GroupVisibilityType::GROUP_VISIBILITY_SENSITIVE === $group_visibility->getType();
-  }
-
-  /**
    * Get user organisations.
    *
    * @param AccountInterface $account
@@ -1172,7 +964,7 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    *   Array of organisation groups the user belongs to.
    */
   public function getUserOrganisations(AccountInterface $account) {
-    /** @var \Drupal\group\Entity\GroupContentInterface[] $user_memberships */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface[] $user_memberships */
     $user_memberships = $this->entityTypeManager->getStorage('group_content')
       ->loadByProperties([
         'type' => "organisation-group_membership",
@@ -1189,18 +981,6 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
     }, $user_memberships);
 
     return $user_groups;
-  }
-
-  /**
-   * Gets default features plugin IDs for a group.
-   *
-   * @param \Drupal\group\Entity\Group $group
-   *   The group entity.
-   */
-  public static function getGroupDefaultFeatures(Group $group) {
-    $group_type_id = $group->getGroupType()->id();
-    $config = \Drupal::configFactory()->get("eic_groups.group_features.default_features.$group_type_id");
-    return $config->get('default_features') ?? [];
   }
 
   /**
@@ -1246,12 +1026,10 @@ class EICGroupsHelper implements EICGroupsHelperInterface {
    *   The joining method plugin id.
    */
   public function getGroupJoiningMethod(GroupInterface $group) {
-    $joining_methods = $this->oecGroupFlexHelper->getGroupJoiningMethod($group);
-    $joining_method = reset($joining_methods);
-    // Check if the method is a valid array.
-    if (is_array($joining_method) && isset($joining_method['plugin_id'])) {
-      return $joining_method['plugin_id'];
-    }
+    // Joining methods came from oec_group_flex, which this project no longer
+    // installs. getGroupJoiningMethod() already returned an empty array for
+    // every group -- verified live -- so reset() gave FALSE and this method
+    // already returned NULL in every environment.
     return NULL;
   }
 

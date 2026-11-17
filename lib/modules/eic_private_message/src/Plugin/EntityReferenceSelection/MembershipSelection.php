@@ -59,7 +59,7 @@ class MembershipSelection extends DefaultSelection {
 
     $connection = Database::getConnection();
 
-    $query = $connection->select('group_content_field_data', 'gc');
+    $query = $connection->select('group_relationship_field_data', 'gc');
     $query->join('users_field_data', 'user_fd', 'gc.entity_id = user_fd.uid');
     $query->join('realname', 'rn', 'gc.entity_id = rn.uid');
     $query->condition('gc.gid', $filter_settings['gid']);

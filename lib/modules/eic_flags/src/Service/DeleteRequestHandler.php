@@ -15,7 +15,7 @@ use Drupal\eic_groups\GroupsModerationHelper;
 use Drupal\eic_moderation\Constants\EICContentModeration;
 use Drupal\eic_search\Service\SolrDocumentProcessor;
 use Drupal\flag\FlaggingInterface;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\user\UserInterface;
 
@@ -173,7 +173,7 @@ class DeleteRequestHandler extends AbstractRequestHandler {
    */
   private function deleteGroup(GroupInterface $group) {
     // Retrieve group content entities linked to the group.
-    $group_contents = $group->getContent();
+    $group_contents = $group->getRelationships();
     $batch_builder = (new BatchBuilder())
       ->setFinishCallback(
         [
@@ -201,7 +201,7 @@ class DeleteRequestHandler extends AbstractRequestHandler {
   /**
    * Deletes the given group content.
    *
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The concerned group content.
    * @param \Drupal\group\Entity\GroupInterface $group
    *   The group having this content.
@@ -209,7 +209,7 @@ class DeleteRequestHandler extends AbstractRequestHandler {
    *   The context of the batch.
    */
   public static function deleteGroupContent(
-    GroupContentInterface $group_content,
+    GroupRelationshipInterface $group_content,
     GroupInterface $group,
     array &$context
   ) {

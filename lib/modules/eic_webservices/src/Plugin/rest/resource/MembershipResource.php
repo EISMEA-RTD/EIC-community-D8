@@ -247,9 +247,9 @@ class MembershipResource extends ResourceBase {
           }
 
           // Update the job_title field.
-          if ($membership->getGroupContent()->hasField('field_vocab_job_title')) {
-            /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
-            $group_content = $membership->getGroupContent();
+          if ($membership->getGroupRelationship()->hasField('field_vocab_job_title')) {
+            /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
+            $group_content = $membership->getGroupRelationship();
             $group_content->field_vocab_job_title = $job_titles;
             $group_content->save();
           }

@@ -14,7 +14,7 @@ use Drupal\eic_user\Hooks\FieldWidgetOperations;
 use Drupal\eic_user\Hooks\FormAlter;
 use Drupal\eic_user\Hooks\UserTokens;
 use Drupal\eic_user\NotificationFrequencies;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\user\EntityOwnerInterface;
 
 /**
@@ -134,13 +134,13 @@ function eic_user_entity_predelete(EntityInterface $entity) {
  * @throws \Drupal\search_api\SearchApiException
  */
 function _eic_user_entity_crud_action(EntityInterface $entity) {
-  if (!$entity instanceof GroupContentInterface) {
+  if (!$entity instanceof GroupRelationshipInterface) {
     return;
   }
 
   /** @var \Drupal\eic_search\Service\SolrDocumentProcessor $solr_helper */
   $solr_helper = \Drupal::service('eic_search.solr_document_processor');
-  $plugin_id = $entity->getContentPlugin()->getPluginDefinition()['id'];
+  $plugin_id = $entity->getPluginId();
   $updated_entities = [];
 
   switch ($plugin_id) {

@@ -14,10 +14,9 @@ use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_groups\EICGroupsHelperInterface;
 use Drupal\eic_user\UserHelper;
 use Drupal\grequest\MembershipRequestManager;
-use Drupal\grequest\Plugin\GroupContentEnabler\GroupMembershipRequest;
+use Drupal\grequest\Plugin\Group\Relation\GroupMembershipRequest;
 use Drupal\group\Entity\Group;
 use Drupal\node\Entity\Node;
-use Drupal\oec_group_features\GroupFeaturePluginManager;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -44,13 +43,6 @@ class FormOperations implements ContainerInjectionInterface {
    * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
   protected $configFactory;
-
-  /**
-   * The Group feature plugin manager.
-   *
-   * @var \Drupal\oec_group_features\GroupFeaturePluginManager
-   */
-  protected $groupFeaturePluginManager;
 
   /**
    * The EIC Groups helper service.
@@ -87,8 +79,6 @@ class FormOperations implements ContainerInjectionInterface {
    *   The group membership request manager.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The config factory.
-   * @param \Drupal\oec_group_features\GroupFeaturePluginManager $group_feature_plugin_manager
-   *   The Group feature plugin manager.
    * @param \Drupal\eic_groups\EICGroupsHelperInterface $eic_groups_helper
    *   The EIC Groups helper service.
    * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
@@ -101,7 +91,6 @@ class FormOperations implements ContainerInjectionInterface {
   public function __construct(
     MembershipRequestManager $membership_request_manager,
     ConfigFactoryInterface $config_factory,
-    GroupFeaturePluginManager $group_feature_plugin_manager,
     EICGroupsHelperInterface $eic_groups_helper,
     RouteMatchInterface $route_match,
     RequestStack $request_stack,
@@ -109,7 +98,6 @@ class FormOperations implements ContainerInjectionInterface {
   ) {
     $this->membershipRequestManager = $membership_request_manager;
     $this->configFactory = $config_factory;
-    $this->groupFeaturePluginManager = $group_feature_plugin_manager;
     $this->eicGroupsHelper = $eic_groups_helper;
     $this->routeMatch = $route_match;
     $this->requestStack = $request_stack;
@@ -123,7 +111,6 @@ class FormOperations implements ContainerInjectionInterface {
     return new static(
       $container->get('grequest.membership_request_manager'),
       $container->get('config.factory'),
-      $container->get('plugin.manager.group_feature'),
       $container->get('eic_groups.helper'),
       $container->get('current_route_match'),
       $container->get('request_stack'),
@@ -204,10 +191,10 @@ class FormOperations implements ContainerInjectionInterface {
    * Implements hook_form_alter() for group_content form.
    */
   public function groupContentFormAlter(&$form, FormStateInterface $form_state, $form_id) {
-    /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
     $group_content = $form_state->getFormObject()->getEntity();
 
-    switch ($group_content->getContentPlugin()->getBaseId()) {
+    switch ($group_content->getPlugin()->getBaseId()) {
       case 'group_membership':
         // Hide some fields for non power-users.
         if (!UserHelper::isPowerUser($this->currentUser->getAccount())) {
@@ -254,7 +241,7 @@ class FormOperations implements ContainerInjectionInterface {
    * user/group, we need to delete the previously existing one.
    */
   public function groupMembershipRequestValidate(&$form, FormStateInterface $form_state) {
-    /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
     $group_content = $form_state->getFormObject()->getEntity();
     /** @var \Drupal\group\Entity\GroupInterface $group */
     $group = $group_content->getGroup();
@@ -290,14 +277,6 @@ class FormOperations implements ContainerInjectionInterface {
   }
 
   /**
-   * Custom submit handler for form_group forms.
-   */
-  public function formGroupSubmit(&$form, FormStateInterface $form_state) {
-    $group = $form_state->getFormObject()->getEntity();
-    $this->enableDefaultFeatures($group);
-  }
-
-  /**
    * Custom submit handler to redirect the user to the group homepage.
    *
    * @param array $form
@@ -318,42 +297,6 @@ class FormOperations implements ContainerInjectionInterface {
         break;
 
     }
-  }
-
-  /**
-   * Enables default features for a group.
-   *
-   * @param \Drupal\group\Entity\Group $group
-   *   The group entity.
-   */
-  protected function enableDefaultFeatures(Group $group) {
-    $group_type_id = $group->getGroupType()->id();
-    $config = $this->configFactory->get("eic_groups.group_features.default_features.$group_type_id");
-    $default_features = $config->get('default_features') ?? [];
-
-    foreach ($this->groupFeaturePluginManager->getDefinitions() as $definition) {
-      if (in_array($definition['id'], $default_features)) {
-        // Enable the feature.
-        $default_feature = $this->groupFeaturePluginManager->createInstance($definition['id']);
-        $default_feature->enable($group);
-
-        // Make sure the feature is enabled on field level.
-        $feature_found = FALSE;
-        foreach ($group->get('features')->getValue() as $item) {
-          if ($item['value'] == $definition['id']) {
-            $feature_found = TRUE;
-            break;
-          }
-        }
-        if (!$feature_found) {
-          $value = $group->get('features')->getValue();
-          $value[]['value'] = $definition['id'];
-          $group->get('features')->setValue($value);
-        }
-      }
-    }
-    // Save enabled group features on field level.
-    $group->save();
   }
 
 }

@@ -8,7 +8,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\eic_groups\EICGroupsHelperInterface;
 use Drupal\eic_groups\GroupsModerationHelper;
 use Drupal\eic_user\UserHelper;
-use Drupal\group\Access\GroupContentCreateEntityAccessCheck as GroupContentCreateEntityAccessCheckBase;
+use Drupal\group\Access\GroupRelationshipCreateEntityAccessCheck as GroupContentCreateEntityAccessCheckBase;
 use Drupal\group\Entity\GroupInterface;
 use Symfony\Component\Routing\Route;
 
@@ -20,7 +20,7 @@ class GroupContentCreateEntityAccessCheck extends GroupContentCreateEntityAccess
   /**
    * The flag access check inner service.
    *
-   * @var \Drupal\group\Access\GroupContentCreateEntityAccessCheck
+   * @var \Drupal\group\Access\GroupRelationshipCreateEntityAccessCheck
    */
   protected $groupContentCreateEntityAccessCheck;
 
@@ -41,7 +41,7 @@ class GroupContentCreateEntityAccessCheck extends GroupContentCreateEntityAccess
   /**
    * Constructor.
    *
-   * @param \Drupal\group\Access\GroupContentCreateEntityAccessCheck $group_content_create_entity_access_check_inner_service
+   * @param \Drupal\group\Access\GroupRelationshipCreateEntityAccessCheck $group_content_create_entity_access_check_inner_service
    *   The flag access check inner service.
    * @param \Drupal\eic_groups\EICGroupsHelperInterface $eic_groups_helper
    *   The EIC Groups helper service.
@@ -65,7 +65,7 @@ class GroupContentCreateEntityAccessCheck extends GroupContentCreateEntityAccess
     $access = $this->groupContentCreateEntityAccessCheck->access($route, $account, $group, $plugin_id);
 
     // If the group content plugin is not installed, we deny access.
-    if (!$group->getGroupType()->hasContentPlugin($plugin_id)) {
+    if (!$group->getGroupType()->hasPlugin($plugin_id)) {
       return AccessResult::forbidden()
         ->addCacheableDependency($account)
         ->addCacheableDependency($group);

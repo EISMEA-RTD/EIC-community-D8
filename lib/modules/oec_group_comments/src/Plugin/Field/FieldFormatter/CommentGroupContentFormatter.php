@@ -11,7 +11,7 @@ use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\oec_group_comments\GroupPermissionChecker;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -142,7 +142,7 @@ class CommentGroupContentFormatter extends CommentDefaultFormatter {
 
     // Exclude entities without the set id.
     if (!empty($entity->id())) {
-      $group_contents = GroupContent::loadByEntity($entity);
+      $group_contents = GroupRelationship::loadByEntity($entity);
     }
 
     // Check if the content is posted in groups.

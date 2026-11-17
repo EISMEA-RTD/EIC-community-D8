@@ -4,7 +4,6 @@ namespace Drupal\eic_search\Service;
 
 use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\eic_groups\Constants\GroupVisibilityType;
 use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_search\Collector\SourcesCollector;
 use Drupal\eic_search\Plugin\search_api\processor\GroupAccessContent;
@@ -25,7 +24,6 @@ use Drupal\eic_user\UserHelper;
 use Drupal\group\Entity\Group;
 use Drupal\group\GroupMembership;
 use Drupal\group\GroupMembershipLoaderInterface;
-use Drupal\oec_group_flex\GroupVisibilityDatabaseStorageInterface;
 use Drupal\search_api\Entity\Index;
 use Drupal\search_api_solr\SolrConnectorInterface;
 use Drupal\taxonomy\Entity\Term;
@@ -55,11 +53,6 @@ class SolrSearchManager {
    * @var \Drupal\group\GroupMembershipLoaderInterface
    */
   private GroupMembershipLoaderInterface $membershipLoader;
-
-  /**
-   * @var \Drupal\oec_group_flex\GroupVisibilityDatabaseStorageInterface
-   */
-  private GroupVisibilityDatabaseStorageInterface $groupVisibilityStorage;
 
   /**
    * @var \Drupal\eic_search\Search\Sources\SourceTypeInterface|null
@@ -120,20 +113,17 @@ class SolrSearchManager {
    * @param \Drupal\eic_search\Collector\SourcesCollector $sources_collector
    * @param \Drupal\Core\Entity\EntityTypeManager $em
    * @param \Drupal\group\GroupMembershipLoaderInterface $membership_loader
-   * @param \Drupal\oec_group_flex\GroupVisibilityDatabaseStorageInterface $group_visibility_storage
    */
   public function __construct(
     AccountProxyInterface $current_user,
     SourcesCollector $sources_collector,
     EntityTypeManager $em,
-    GroupMembershipLoaderInterface $membership_loader,
-    GroupVisibilityDatabaseStorageInterface $group_visibility_storage
+    GroupMembershipLoaderInterface $membership_loader
   ) {
     $this->currentUser = $current_user;
     $this->sourcesCollector = $sources_collector;
     $this->em = $em;
     $this->membershipLoader = $membership_loader;
-    $this->groupVisibilityStorage = $group_visibility_storage;
   }
 
   /**
@@ -506,16 +496,6 @@ class SolrSearchManager {
 
     if (
       $this->source instanceof SourceTypeInterface &&
-      $this->source->prefilterByGroupVisibility()
-    ) {
-      $this->generateUsersQueryVisibilityGroup(
-        $current_group,
-        $this->source instanceof UserRecommendSourceType
-      );
-    }
-
-    if (
-      $this->source instanceof SourceTypeInterface &&
       $this->source->excludingCurrentGroup()
     ) {
       $this->generateExcludingUsersGroupQuery($current_group);
@@ -780,71 +760,6 @@ class SolrSearchManager {
     $status_query .= ')';
 
     $this->rawFieldQuery .= $status_query;
-  }
-
-  /**
-   * Prefilter users by the current group visibility.
-   *
-   * @param string $group_id
-   *   The group id.
-   * @param bool $strict_private
-   *   If TRUE, it will filter only member of private group and NOT people that are allowed to be invited.
-   */
-  private function generateUsersQueryVisibilityGroup($group_id, bool $strict_private = FALSE) {
-    $query = '';
-    $group = Group::load($group_id);
-
-    $group_visibility_entity = $this->groupVisibilityStorage->load($group->id());
-    $visibility_type = $group_visibility_entity ?
-      $group_visibility_entity->getType() :
-      NULL;
-
-    switch ($visibility_type) {
-      case GroupVisibilityType::GROUP_VISIBILITY_PRIVATE:
-      case GroupVisibilityType::GROUP_VISIBILITY_COMMUNITY:
-        if ($strict_private) {
-          $query = '(itm_user_group_ids:(' . $group_id . '))';
-        }
-        else {
-          $query = '(sm_user_profile_role_array:*' . UserHelper::ROLE_TRUSTED_USER . '*)';
-        }
-        break;
-
-      case GroupVisibilityType::GROUP_VISIBILITY_SENSITIVE:
-        $query = '(sm_user_profile_role_array:*' . UserHelper::ROLE_SENSITIVE . '*)';
-        break;
-      // In this case, when we have a custom restriction, we can have multiple restriction options like email domain, trusted users, organisation, ...
-      case GroupVisibilityType::GROUP_VISIBILITY_CUSTOM_RESTRICTED:
-        $options = $group_visibility_entity->getOptions();
-        foreach ($options as $key => $option) {
-          // restricted_email_domains_status can be false so we need to check if enable
-          if (GroupVisibilityType::GROUP_VISIBILITY_OPTION_EMAIL_DOMAIN === $key && $option[GroupVisibilityType::GROUP_VISIBILITY_OPTION_EMAIL_DOMAIN . '_status']) {
-            $authorized_emails = $option[GroupVisibilityType::GROUP_VISIBILITY_OPTION_EMAIL_DOMAIN . '_conf'];
-            $authorized_emails = str_replace(' ', '', $authorized_emails);
-            $emails = explode(',', $authorized_emails);
-            $emails = implode(' OR *', $emails);
-            $query = '(ss_user_mail:(*' . $emails . '))';
-          }
-
-          if (GroupVisibilityType::GROUP_VISIBILITY_OPTION_TRUSTED_USERS === $key && $option[GroupVisibilityType::GROUP_VISIBILITY_OPTION_TRUSTED_USERS . '_status']) {
-            $user_ids = $option[GroupVisibilityType::GROUP_VISIBILITY_OPTION_TRUSTED_USERS . '_conf'];
-            $users = array_map(function ($user_id) {
-              return $user_id['target_id'];
-            }, $user_ids);
-            $users = implode(' OR ', $users);
-            $query = '(its_user_id:(' . $users . '))';
-          }
-        }
-        break;
-      default:
-        break;
-    }
-
-    if (empty($query)) {
-      return;
-    }
-
-    $this->rawFieldQuery .= !empty($this->rawFieldQuery) ? " AND $query" : "$query";
   }
 
   /**

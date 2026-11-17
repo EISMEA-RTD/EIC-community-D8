@@ -8,7 +8,7 @@
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\eic_group_statistics\GroupStatisticTypes;
 use Drupal\eic_group_statistics\Hooks\EntityOperations;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\eic_group_statistics\GroupStatisticsSearchApiReindex;
 
 /**
@@ -22,7 +22,7 @@ function eic_group_statistics_group_delete(EntityInterface $entity) {
  * Implements hook_ENTITY_TYPE_insert().
  */
 function eic_group_statistics_group_content_insert(EntityInterface $entity) {
-  switch ($entity->getContentPlugin()->getPluginId()) {
+  switch ($entity->getPlugin()->getPluginId()) {
     case "group_membership":
     case "group_node:discussion":
     case "group_node:document":
@@ -40,7 +40,7 @@ function eic_group_statistics_group_content_insert(EntityInterface $entity) {
  * Implements hook_ENTITY_TYPE_delete().
  */
 function eic_group_statistics_group_content_delete(EntityInterface $entity) {
-  switch ($entity->getContentPlugin()->getPluginId()) {
+  switch ($entity->getPlugin()->getPluginId()) {
     case "group_membership":
       \Drupal::classResolver(EntityOperations::class)
         ->groupContentDelete($entity);
@@ -61,7 +61,7 @@ function eic_group_statistics_node_predelete(EntityInterface $entity) {
     case 'wiki_page':
       // We need to make sure the node belongs to a group content, otherwise we
       // don't need to update any group statistics.
-      $group_contents = GroupContent::loadByEntity($entity);
+      $group_contents = GroupRelationship::loadByEntity($entity);
       if (!$group_contents) {
         return;
       }
@@ -89,7 +89,7 @@ function eic_group_statistics_comment_insert(EntityInterface $entity) {
 
   // We need to make sure the comment belongs to a group content, otherwise we
   // don't need to update any group statistics.
-  $group_contents = GroupContent::loadByEntity($commented_entity);
+  $group_contents = GroupRelationship::loadByEntity($commented_entity);
   if (!$group_contents) {
     return;
   }
@@ -124,7 +124,7 @@ function eic_group_statistics_comment_delete(EntityInterface $entity) {
 
   // We need to make sure the comment belongs to a group content, otherwise we
   // don't need to update any group statistics.
-  $group_contents = GroupContent::loadByEntity($commented_entity);
+  $group_contents = GroupRelationship::loadByEntity($commented_entity);
   if (!$group_contents) {
     return;
   }
@@ -163,7 +163,7 @@ function eic_group_statistics_node_presave(EntityInterface $entity) {
       // don't need to update any group statistics.
       // @todo Make sure the group_content entity is the right one.
       // See eic_share_content module which also creates group_content entities.
-      $group_contents = GroupContent::loadByEntity($entity);
+      $group_contents = GroupRelationship::loadByEntity($entity);
       if (!$group_contents) {
         return;
       }
@@ -195,21 +195,21 @@ function eic_group_statistics_views_data() {
       'id' => 'group_latest_activity',
     ],
   ];
-  $data['group_content_field_data']['group_member_latest_activity'] = [
+  $data['group_relationship_field_data']['group_member_latest_activity'] = [
     'title' => t('Member latest activity'),
     'help' => t('Displays the member latest activity in a group.'),
     'field' => [
       'id' => 'group_member_latest_activity',
     ],
   ];
-  $data['group_content_field_data']['group_member_content_count'] = [
+  $data['group_relationship_field_data']['group_member_content_count'] = [
     'title' => t('Member content count'),
     'help' => t('Displays the total amount of contents of a member in a group.'),
     'field' => [
       'id' => 'group_member_content_count',
     ],
   ];
-  $data['group_content_field_data']['group_member_comment_count'] = [
+  $data['group_relationship_field_data']['group_member_comment_count'] = [
     'title' => t('Member comment count'),
     'help' => t('Displays the total amount of comments of a member in a group.'),
     'field' => [

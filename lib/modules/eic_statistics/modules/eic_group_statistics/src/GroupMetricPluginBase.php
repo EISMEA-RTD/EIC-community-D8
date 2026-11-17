@@ -11,7 +11,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\eic_flags\FlagHelper;
 use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_media_statistics\EntityFileDownloadCount;
-use Drupal\group\Plugin\GroupContentEnablerManager;
+use Drupal\group\Plugin\Group\Relation\GroupRelationTypeManager;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -63,7 +63,7 @@ abstract class GroupMetricPluginBase extends PluginBase implements GroupMetricIn
   /**
    * The group content enabler manager service.
    *
-   * @var \Drupal\group\Plugin\GroupContentEnablerManager
+   * @var \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManager
    */
   protected $groupContentEnablerManager;
 
@@ -86,7 +86,7 @@ abstract class GroupMetricPluginBase extends PluginBase implements GroupMetricIn
    *   The entity type manager service.
    * @param \Drupal\eic_media_statistics\EntityFileDownloadCount $entity_file_download_count
    *   The EIC entity file download count service.
-   * @param \Drupal\group\Plugin\GroupContentEnablerManager $group_content_enabler_manager
+   * @param \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManager $group_content_enabler_manager
    *   The group content enabler manager service.
    */
   public function __construct(
@@ -98,7 +98,7 @@ abstract class GroupMetricPluginBase extends PluginBase implements GroupMetricIn
     GroupStatisticsHelperInterface $group_statistics_helper,
     EntityTypeManagerInterface $entity_type_manager,
     EntityFileDownloadCount $entity_file_download_count,
-    GroupContentEnablerManager $group_content_enabler_manager
+    GroupRelationTypeManager $group_content_enabler_manager
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     // @todo Move those services to the child classes where needed.
@@ -128,7 +128,7 @@ abstract class GroupMetricPluginBase extends PluginBase implements GroupMetricIn
       $container->get('eic_group_statistics.helper'),
       $container->get('entity_type.manager'),
       $container->get('eic_media_statistics.entity_file_download_count'),
-      $container->get('plugin.manager.group_content_enabler')
+      $container->get('group_relation_type.manager')
     );
   }
 

@@ -1,0 +1,8 @@
+# Schema for the views plugins provided by eic_user.
+
+views.access.current_user_match_access:
+  type: mapping
+  label: 'Matching current user with route user parameter'
+  # MatchCurrentUserRoutePluginAccess takes no options. Without this entry
+  # Drupal 11 reports "access.options missing schema" every time a view using
+  # the plugin is saved.

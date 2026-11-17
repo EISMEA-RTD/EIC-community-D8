@@ -68,8 +68,8 @@ class GroupContentMessageCreator implements ContainerInjectionInterface {
    * Sends out message notifications upon group content creation.
    */
   public function groupContentInsert(EntityInterface $entity) {
-    /** @var \Drupal\group\Entity\GroupContent $entity */
-    $group_content_type = $entity->getGroupContentType();
+    /** @var \Drupal\group\Entity\GroupRelationship $entity */
+    $group_content_type = $entity->getRelationshipType();
 
     // New member joined notification.
     if ($group_content_type->get('content_plugin') === 'group_membership') {
@@ -85,7 +85,7 @@ class GroupContentMessageCreator implements ContainerInjectionInterface {
         return;
       }
 
-      /** @var \Drupal\group\Entity\GroupContent[] $memberships */
+      /** @var \Drupal\group\Entity\GroupRelationship[] $memberships */
       $memberships = $this->membershipLoader->loadByUser($relatedUser);
 
       $organisationsMemberships = array_filter($memberships, function ($membership) {

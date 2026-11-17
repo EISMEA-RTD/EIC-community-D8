@@ -128,14 +128,20 @@ class ProcessorDiscussion extends DocumentProcessor {
       $image_style = $this->entityTypeManager->getStorage('image_style')
         ->load('crop_36x36');
 
-      $last_comment_author = $comment->get('uid')->referencedEntities()[0];
+      $last_comment_author = $comment->get('uid')->referencedEntities()[0] ?? NULL;
 
       /** @var \Drupal\media\MediaInterface|NULL $author_media */
-      $author_media = $last_comment_author->get('field_media')->entity;
+      $author_media = $last_comment_author
+        && $last_comment_author->hasField('field_media')
+        && !$last_comment_author->get('field_media')->isEmpty()
+        ? $last_comment_author->get('field_media')->entity
+        : NULL;
       /** @var File|NULL $author_file */
-      $author_file = $author_media instanceof MediaInterface ? File::load(
-        $author_media->get('oe_media_image')->target_id
-      ) : NULL;
+      $author_file = $author_media instanceof MediaInterface
+        && $author_media->hasField('oe_media_image')
+        && !$author_media->get('oe_media_image')->isEmpty()
+        ? File::load($author_media->get('oe_media_image')->target_id)
+        : NULL;
       $author_file_url = $author_file ?
         $this->urlGenerator->transformRelative($image_style->buildUrl($author_file->get('uri')->value)) :
         NULL;

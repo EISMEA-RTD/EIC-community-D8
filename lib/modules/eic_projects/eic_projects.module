@@ -124,7 +124,9 @@ function eic_projects_user_predelete(UserInterface $account) {
     ->allRevisions()
     ->condition('uid', $account->id())
     ->execute();
+  /** @var \Drupal\Core\Entity\RevisionableStorageInterface $revision_storage */
+  $revision_storage = $storage;
   foreach (array_keys($extraction_request_ids) as $revision_id) {
-    $storage->deleteRevision($revision_id);
+    $revision_storage->deleteRevision($revision_id);
   }
 }

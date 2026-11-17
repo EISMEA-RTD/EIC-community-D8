@@ -7,7 +7,7 @@ use Drupal\comment\CommentAccessControlHandler;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityHandlerInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -65,7 +65,7 @@ class OecGroupCommentsAccessControlHandler extends CommentAccessControlHandler i
         ->access($operation, $account, TRUE));
     }
 
-    $group_contents = GroupContent::loadByEntity($commented_entity);
+    $group_contents = GroupRelationship::loadByEntity($commented_entity);
     $parent_access = parent::checkAccess($entity, $operation, $account);
 
     // If not posted in a group, don't bother doing the logic for it.

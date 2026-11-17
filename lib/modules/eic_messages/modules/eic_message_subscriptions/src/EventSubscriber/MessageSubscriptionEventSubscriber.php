@@ -8,7 +8,7 @@ use Drupal\eic_message_subscriptions\Service\SubscriptionMessageCreator;
 use Drupal\eic_message_subscriptions\SubscriptionOperationTypes;
 use Drupal\eic_messages\Util\QueuedMessageChecker;
 use Drupal\flag\FlaggingInterface;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\message_subscribe\SubscribersInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -129,7 +129,7 @@ class MessageSubscriptionEventSubscriber implements EventSubscriberInterface {
    */
   public function groupContentCreated(MessageSubscriptionEvent $event) {
     $entity = $event->getEntity();
-    $group_contents = GroupContent::loadByEntity($entity);
+    $group_contents = GroupRelationship::loadByEntity($entity);
     if (empty($group_contents)) {
       return;
     }
@@ -169,7 +169,7 @@ class MessageSubscriptionEventSubscriber implements EventSubscriberInterface {
    */
   public function groupContentUpdated(MessageSubscriptionEvent $event) {
     $entity = $event->getEntity();
-    $group_contents = GroupContent::loadByEntity($entity);
+    $group_contents = GroupRelationship::loadByEntity($entity);
     if (empty($group_contents)) {
       return;
     }

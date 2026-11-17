@@ -220,7 +220,7 @@ class ProcessorUser extends DocumentProcessor {
 
     // Query to count number of members.
     $query_content = $this->connection->select(
-      'group_content_field_data',
+      'group_relationship_field_data',
       'gc_fd'
     )
       ->fields('gc_fd', ['uid'])
@@ -253,7 +253,7 @@ class ProcessorUser extends DocumentProcessor {
       $group = $membership->getGroup();
 
       $query_content = $this->connection->select(
-        'group_content_field_data',
+        'group_relationship_field_data',
         'gc_fd'
       )
         ->fields('gc_fd', ['uid'])
@@ -269,7 +269,7 @@ class ProcessorUser extends DocumentProcessor {
         ->condition('gcfd.type', '%group_node%', 'LIKE')
         ->condition('gcfd.gid', $group->id());
       $query_comments->join(
-        'group_content_field_data',
+        'group_relationship_field_data',
         'gcfd',
         'cfd.entity_id = gcfd.entity_id'
       );

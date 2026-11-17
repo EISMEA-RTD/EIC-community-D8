@@ -62,7 +62,7 @@ class FormOperations implements ContainerInjectionInterface {
    * @param \Drupal\eic_content\EICContentHelper $content_helper
    *   The EIC content helper service.
    * @param \Drupal\eic_messages\Service\GroupContentMessageCreator $group_content_message_creator
-   *   The GroupContent Message Creator service.
+   *   The GroupRelationship Message Creator service.
    * @param \Drupal\content_moderation\ModerationInformation $content_moderation_info
    *   The Content moderation information service.
    */
@@ -129,7 +129,7 @@ class FormOperations implements ContainerInjectionInterface {
       $is_group_content = TRUE;
       $is_new_content = TRUE;
     }
-    // Check we are updating a node which has an associated GroupContent entity.
+    // Check we are updating a node which has an associated GroupRelationship entity.
     if ($node = $form_state->getFormObject()->getEntity()) {
       if (
         !$node->isNew() &&

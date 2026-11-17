@@ -8,9 +8,9 @@ use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Routing\RedirectDestinationInterface;
 use Drupal\eic_groups\EICGroupsHelper;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
-use Drupal\group\Plugin\GroupContentEnablerManagerInterface;
+use Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -33,7 +33,7 @@ class GroupMembershipInvitationController extends ControllerBase {
   private $mailManager;
 
   /**
-   * @var \Drupal\group\Plugin\GroupContentEnablerManagerInterface
+   * @var \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface
    */
   private $groupContentEnablerManager;
 
@@ -48,7 +48,7 @@ class GroupMembershipInvitationController extends ControllerBase {
    *   The messenger service.
    * @param \Drupal\Core\Mail\MailManagerInterface $mail_manager
    *   The mail manager.
-   * @param \Drupal\group\Plugin\GroupContentEnablerManagerInterface $group_content_enabler_manager
+   * @param \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface $group_content_enabler_manager
    *   The group content enabler service.
    */
   public function __construct(
@@ -57,7 +57,7 @@ class GroupMembershipInvitationController extends ControllerBase {
     RedirectDestinationInterface $redirect_destionation,
     MessengerInterface $messenger,
     MailManagerInterface $mail_manager,
-    GroupContentEnablerManagerInterface $group_content_enabler_manager
+    GroupRelationTypeManagerInterface $group_content_enabler_manager
   ) {
     $this->entityTypeManager = $entity_type_manager;
     $this->requestStack = $request_stack;
@@ -77,14 +77,14 @@ class GroupMembershipInvitationController extends ControllerBase {
       $container->get('redirect.destination'),
       $container->get('messenger'),
       $container->get('plugin.manager.mail'),
-      $container->get('plugin.manager.group_content_enabler')
+      $container->get('group_relation_type.manager')
     );
   }
 
   /**
    * @param \Drupal\group\Entity\GroupInterface $group
    *   The group entity.
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The group content entity.
    * 
    * @return \Symfony\Component\HttpFoundation\RedirectResponse
@@ -95,9 +95,9 @@ class GroupMembershipInvitationController extends ControllerBase {
    */
   public function resendInvite(
     GroupInterface $group,
-    GroupContentInterface $group_content
+    GroupRelationshipInterface $group_content
   ) {
-    if ($group_content->getContentPlugin()->getPluginId() !== 'group_invitation') {
+    if ($group_content->getPlugin()->getPluginId() !== 'group_invitation') {
       throw new \InvalidArgumentException();
     }
 

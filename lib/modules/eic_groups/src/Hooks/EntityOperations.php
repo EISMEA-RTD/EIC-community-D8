@@ -24,13 +24,11 @@ use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_groups\EICGroupsHelperInterface;
 use Drupal\eic_search\Service\SolrDocumentProcessor;
 use Drupal\eic_user\UserHelper;
-use Drupal\group\Entity\GroupContent;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationship;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group_content_menu\GroupContentMenuInterface;
 use Drupal\node\NodeInterface;
-use Drupal\oec_group_flex\GroupVisibilityRecord;
-use Drupal\oec_group_flex\OECGroupFlexHelper;
 use Drupal\pathauto\PathautoGeneratorInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -79,13 +77,6 @@ class EntityOperations implements ContainerInjectionInterface {
   protected $userHelper;
 
   /**
-   * The OEC Group Flex helper service.
-   *
-   * @var \Drupal\oec_group_flex\OECGroupFlexHelper
-   */
-  protected $oecGroupFlexHelper;
-
-  /**
    * The EIC Search Solr Document Processor.
    *
    * @var \Drupal\eic_search\Service\SolrDocumentProcessor
@@ -112,8 +103,6 @@ class EntityOperations implements ContainerInjectionInterface {
    *   The pathauto generator.
    * @param \Drupal\eic_user\UserHelper $user_helper
    *   The EIC User helper service.
-   * @param \Drupal\oec_group_flex\OECGroupFlexHelper $oec_group_flex_helper
-   *   The OEC Group Flex helper service.
    * @param \Drupal\eic_search\Service\SolrDocumentProcessor $solr_document_processor
    *   The Solr Document Processor service.
    * @param \Drupal\book\BookManagerInterface $book_manager
@@ -125,7 +114,6 @@ class EntityOperations implements ContainerInjectionInterface {
     EICGroupsHelperInterface $eic_groups_helper,
     PathautoGeneratorInterface $pathauto_generator,
     UserHelper $user_helper,
-    OECGroupFlexHelper $oec_group_flex_helper,
     SolrDocumentProcessor $solr_document_processor,
     BookManagerInterface $book_manager
   ) {
@@ -134,7 +122,6 @@ class EntityOperations implements ContainerInjectionInterface {
     $this->eicGroupsHelper = $eic_groups_helper;
     $this->pathautoGenerator = $pathauto_generator;
     $this->userHelper = $user_helper;
-    $this->oecGroupFlexHelper = $oec_group_flex_helper;
     $this->solrDocumentProcessor = $solr_document_processor;
     $this->bookManager = $book_manager;
   }
@@ -149,7 +136,6 @@ class EntityOperations implements ContainerInjectionInterface {
       $container->get('eic_groups.helper'),
       $container->get('pathauto.generator'),
       $container->get('eic_user.helper'),
-      $container->get('oec_group_flex.helper'),
       $container->get('eic_search.solr_document_processor'),
       $container->get('book.manager')
     );
@@ -210,22 +196,12 @@ class EntityOperations implements ContainerInjectionInterface {
           $variables['admins'][] = $this->userHelper->getUserLink($item->getUser());
         }
 
-        // Get group visibility.
-        $variables['visibility'] = $this->oecGroupFlexHelper->getGroupVisibilitySettings($entity);
-        if (!empty($variables['visibility']['settings']) && $variables['visibility']['settings'] instanceof GroupVisibilityRecord) {
-          $variables['visibility']['settings'] = $this->oecGroupFlexHelper->getGroupVisibilityRecordSettings($variables['visibility']['settings']);
-        }
-
-        // Get joining methods.
-        $variables['joining_methods'] = $this->oecGroupFlexHelper->getGroupJoiningMethod($entity);
-
-        // Get the title and descriptions for each plugin.
-        $variables['visibility']['title'] = $this->eicGroupsHelper->getGroupFlexPluginTitle('visibility', $variables['visibility']['plugin_id'], 'default', $entity->bundle());
-        $variables['visibility']['description'] = $this->eicGroupsHelper->getGroupFlexPluginDescription('visibility', $variables['visibility']['plugin_id'], $entity->bundle());
-        foreach ($variables['joining_methods'] as $index => $joining_method) {
-          $variables['joining_methods'][$index]['title'] = $this->eicGroupsHelper->getGroupFlexPluginTitle('joining_method', $joining_method['plugin_id']);
-          $variables['joining_methods'][$index]['description'] = $this->eicGroupsHelper->getGroupFlexPluginDescription('joining_method', $joining_method['plugin_id'], $entity->bundle());
-        }
+        // Group visibility and joining methods came from oec_group_flex, which
+        // this project no longer installs. This branch only ran for the
+        // about_page view mode, which exists solely for the "group" group type
+        // -- core.entity_view_display.group.group.about_page -- and no group of
+        // that type exists in any environment. No template consumed the
+        // variables either.
 
         $build += $variables;
         break;
@@ -336,7 +312,7 @@ class EntityOperations implements ContainerInjectionInterface {
    */
   public function createGroupWikiBook(GroupInterface $entity) {
     $installedContentPlugins = $entity->getGroupType()
-      ->getInstalledContentPlugins();
+      ->getInstalledPlugins();
     if ($installedContentPlugins && in_array('group_node:book', $installedContentPlugins->getInstanceIds())) {
       $node_values = [
         'title' => "{$entity->label()} - Wiki",
@@ -355,7 +331,7 @@ class EntityOperations implements ContainerInjectionInterface {
         $node->set('moderation_state', DefaultContentModerationStates::PUBLISHED_STATE);
       }
       $node->save();
-      $entity->addContent($node, 'group_node:book');
+      $entity->addRelationship($node, 'group_node:book');
     }
   }
 
@@ -408,14 +384,15 @@ class EntityOperations implements ContainerInjectionInterface {
    */
   private function publishGroupWiki(GroupInterface $group) {
     $installedContentPlugins = $group->getGroupType()
-      ->getInstalledContentPlugins();
+      ->getInstalledPlugins();
     if (
       !$installedContentPlugins ||
       !in_array('group_node:book', $installedContentPlugins->getInstanceIds())
     ) {
       return;
     }
-    $book_content_plugin_id = $group->getGroupType()->getContentPlugin('group_node:book')->getContentTypeConfigId();
+    $book_content_plugin_id = $this->entityTypeManager->getStorage('group_content_type')
+      ->getRelationshipTypeId($group->bundle(), 'group_node:book');
     $query = $this->entityTypeManager->getStorage('group_content')
       ->getQuery()
       ->accessCheck(FALSE);
@@ -425,7 +402,7 @@ class EntityOperations implements ContainerInjectionInterface {
     $results = $query->execute();
 
     if (!empty($results)) {
-      $group_content = GroupContent::load(reset($results));
+      $group_content = GroupRelationship::load(reset($results));
       if (
         ($node_book = $group_content->getEntity()) &&
         $node_book instanceof NodeInterface &&
@@ -449,8 +426,8 @@ class EntityOperations implements ContainerInjectionInterface {
   protected function createGroupAboutPageMenuLink(EntityInterface $group) {
     foreach (group_content_menu_get_menus_per_group($group) as $group_menu) {
       if (
-        $group_menu->getGroupContentType()
-          ->getContentPlugin()
+        $group_menu->getRelationshipType()
+          ->getPlugin()
           ->getPluginId() == 'group_content_menu:group_main_menu'
       ) {
         // Create menu item.
@@ -495,7 +472,7 @@ class EntityOperations implements ContainerInjectionInterface {
     elseif ($entity instanceof NodeInterface) {
       $access = $this->nodeFieldAccess($operation, $field_definition, $account, $items);
     }
-    elseif ($entity instanceof GroupContentInterface) {
+    elseif ($entity instanceof GroupRelationshipInterface) {
       $access = $this->groupContentFieldAccess($operation, $field_definition, $account, $items);
     }
 
@@ -569,7 +546,7 @@ class EntityOperations implements ContainerInjectionInterface {
           return $access;
         }
 
-        /** @var \Drupal\group\Entity\Storage\GroupContentStorageInterface $storage */
+        /** @var \Drupal\group\Entity\Storage\GroupRelationshipStorageInterface $storage */
         $storage = $this->entityTypeManager->getStorage('group_content');
         $group_contents = $storage->loadByEntity($entity);
 
@@ -614,10 +591,10 @@ class EntityOperations implements ContainerInjectionInterface {
    */
   protected function groupContentFieldAccess($operation, FieldDefinitionInterface $field_definition, AccountInterface $account, FieldItemListInterface $items = NULL) {
     $access = AccessResult::neutral();
-    /** @var \Drupal\group\Entity\GroupContentInterface $entity */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
     $entity = $items->getEntity();
 
-    switch ($entity->getGroupContentType()->getContentPlugin()->getPluginId()) {
+    switch ($entity->getRelationshipType()->getPlugin()->getPluginId()) {
       case 'group_invitation':
         if ($field_definition->getName() == 'invitee_mail') {
           /** @var \Drupal\user\UserInterface $user */
@@ -644,7 +621,7 @@ class EntityOperations implements ContainerInjectionInterface {
    */
   public function invalidateGroupContentCache(GroupInterface $entity) {
     $installedContentPluginIds = $entity->getGroupType()
-      ->getInstalledContentPlugins()
+      ->getInstalledPlugins()
       ->getInstanceIds();
 
     $node_plugins = array_filter($installedContentPluginIds, function ($key) {
@@ -663,7 +640,7 @@ class EntityOperations implements ContainerInjectionInterface {
 
     // Loads all group contents of the group and invalidate cache.
     foreach ($node_plugins as $plugin_id) {
-      $group_contents = $entity->getContent($plugin_id);
+      $group_contents = $entity->getRelationships($plugin_id);
 
       foreach ($group_contents as $group_content) {
         $node = $group_content->getEntity();

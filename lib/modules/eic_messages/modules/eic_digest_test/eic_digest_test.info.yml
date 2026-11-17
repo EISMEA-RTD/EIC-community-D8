@@ -3,7 +3,7 @@ type: module
 description: Provides a testing UI for digest e-mails. Enable on test environments only.
 package: European Innovation Council
 hidden: true
-core_version_requirement: ^8 || ^9 || ^10
+core_version_requirement: ^10 || ^11
 dependencies:
   - message
   - eic_user

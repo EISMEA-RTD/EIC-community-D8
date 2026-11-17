@@ -49,7 +49,7 @@ class MembershipTransitionSubscriber implements EventSubscriberInterface {
    *   The event.
    */
   public function onMembershipApprove(WorkflowTransitionEvent $event) {
-    /** @var \Drupal\group\Entity\GroupContentInterface $membership */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $membership */
     $membership = $event->getEntity();
     $group = $membership->getGroup();
     $member = $membership->getEntity();
@@ -88,7 +88,7 @@ class MembershipTransitionSubscriber implements EventSubscriberInterface {
    *   The event.
    */
   public function onMembershipReject(WorkflowTransitionEvent $event) {
-    /** @var \Drupal\group\Entity\GroupContentInterface $membership */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $membership */
     $membership = $event->getEntity();
     $group = $membership->getGroup();
     $member = $membership->getEntity();

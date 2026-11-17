@@ -1,7 +1,0 @@
-eic_queue.settings:
-  type: config_object
-  label: 'EIC Queue settings'
-  mapping:
-    org_queue_name:
-      type: string
-      label: 'Name of the SQS queue for organisations events'

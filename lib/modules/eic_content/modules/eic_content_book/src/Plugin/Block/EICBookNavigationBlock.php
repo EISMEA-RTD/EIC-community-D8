@@ -7,6 +7,7 @@ use Drupal\book\Plugin\Block\BookNavigationBlock;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\eic_content\EICContentHelperInterface;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -44,18 +45,22 @@ class EICBookNavigationBlock extends BookNavigationBlock {
    *   The book manager.
    * @param \Drupal\Core\Entity\EntityStorageInterface $node_storage
    *   The node storage.
+   * @param \Drupal\Core\Session\AccountProxyInterface $current_user
+   *   The current user.
    * @param \Drupal\eic_content\EICContentHelperInterface $eic_content_helper
    *   The EIC content helper.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteMatchInterface $route_match, BookManagerInterface $book_manager, EntityStorageInterface $node_storage, EICContentHelperInterface $eic_content_helper) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $route_match, $book_manager, $node_storage);
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteMatchInterface $route_match, BookManagerInterface $book_manager, EntityStorageInterface $node_storage, AccountProxyInterface $current_user, EICContentHelperInterface $eic_content_helper) {
+    // Contrib book's BookNavigationBlock takes the current user as a fourth
+    // dependency; core's version did not.
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $route_match, $book_manager, $node_storage, $current_user);
     $this->eicContentHelper = $eic_content_helper;
   }
 
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): static {
     return new static(
       $configuration,
       $plugin_id,
@@ -63,6 +68,7 @@ class EICBookNavigationBlock extends BookNavigationBlock {
       $container->get('current_route_match'),
       $container->get('book.manager'),
       $container->get('entity_type.manager')->getStorage('node'),
+      $container->get('current_user'),
       $container->get('eic_content.helper')
     );
   }
@@ -70,7 +76,7 @@ class EICBookNavigationBlock extends BookNavigationBlock {
   /**
    * {@inheritdoc}
    */
-  public function defaultConfiguration() {
+  public function defaultConfiguration(): array {
     return [];
   }
 
@@ -84,7 +90,7 @@ class EICBookNavigationBlock extends BookNavigationBlock {
   /**
    * {@inheritdoc}
    */
-  public function build() {
+  public function build(): array {
     // If there wasn't any node found in the route context, we do nothing.
     if (!$node = $this->routeMatch->getParameter('node')) {
       return [];

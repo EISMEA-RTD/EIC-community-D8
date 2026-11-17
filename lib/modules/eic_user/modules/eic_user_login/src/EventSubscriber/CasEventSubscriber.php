@@ -6,7 +6,6 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\cas\Event\CasPreLoginEvent;
 use Drupal\cas\Event\CasPreRegisterEvent;
 use Drupal\cas\Event\CasPreUserLoadEvent;
-use Drupal\cas\Service\CasHelper;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\eic_user_login\Constants\SmedUserStatuses;
@@ -69,14 +68,22 @@ class CasEventSubscriber implements EventSubscriberInterface {
    * {@inheritdoc}
    */
   public static function getSubscribedEvents() {
+    // Subscribe by event class name. The CasHelper EVENT_* string constants are
+    // deprecated in cas 3.0.0, and cas's DeprecatedEventConstants compiler pass
+    // reacts to them by fetching logger.factory out of a container that is
+    // still being compiled, which on Drupal 11 aborts the container build.
     return [
-      CasHelper::EVENT_PRE_REGISTER => ['userPreRegister'],
-      CasHelper::EVENT_PRE_LOGIN => ['userPreLogin'],
-      CasHelper::EVENT_PRE_USER_LOAD => ['userPreLoad'],
-      // Priority -50: after oe_authentication's property processing (0) and
-      // before its MessengerEuLoginEventSubscriber::showUserMessage (-100),
-      // which is the only listener below us on this dispatch.
-      CasPreRegisterEvent::class => ['suppressDuplicateApprovalMessage', -50],
+      // Two listeners share this event, so the value is a list of listeners.
+      // A repeated array key would silently drop the first one.
+      CasPreRegisterEvent::class => [
+        ['userPreRegister'],
+        // Priority -50: after oe_authentication's property processing (0) and
+        // before its MessengerEuLoginEventSubscriber::showUserMessage (-100),
+        // which is the only listener below us on this dispatch.
+        ['suppressDuplicateApprovalMessage', -50],
+      ],
+      CasPreLoginEvent::class => ['userPreLogin'],
+      CasPreUserLoadEvent::class => ['userPreLoad'],
     ];
   }
 

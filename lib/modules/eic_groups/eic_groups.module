@@ -36,8 +36,8 @@ use Drupal\eic_projects\Constants\Projects;
 use Drupal\eic_user\UserHelper;
 use Drupal\flag\FlagInterface;
 use Drupal\group\Access\GroupAccessResult;
-use Drupal\group\Entity\GroupContent;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationship;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\pathauto\PathautoGeneratorInterface;
 use Drupal\views\ViewExecutable;
@@ -92,54 +92,12 @@ function eic_groups_theme($existing, $type, $theme, $path) {
         'can_view_comments' => FALSE,
         'highlighted_comment' => 0,
         'no_container' => FALSE,
-        'ckeditor_js_settings' => [],
       ],
     ],
     'eic_group_edit_form' => [
       'render element' => 'form',
     ],
   ];
-}
-
-/**
- * Implements hook_eic_groups_group_feature_public_alter().
- */
-function eic_groups_eic_groups_group_feature_public_alter(bool &$is_publicly_available, array $context) {
-  /** @var \Drupal\group\Entity\GroupInterface $group */
-  $group = $context['group'];
-
-  switch ($group->getGroupType()->id()) {
-    case 'event':
-      // None of the group feature for events should be publicly available for
-      // events.
-      $is_publicly_available = FALSE;
-      break;
-  }
-}
-
-/**
- * Implements hook_oec_group_flex_plugin_permission_alter().
- */
-function eic_groups_oec_group_flex_plugin_permission_alter(bool &$is_allowed, array $context) {
-  /** @var \Drupal\group\Entity\GroupInterface $group */
-  $group = $context['group'];
-  /** @var \Drupal\group\Entity\GroupRoleInterface $role */
-  $role = $context['role'];
-  $plugin = $context['plugin'];
-
-  switch ($group->getGroupType()->id()) {
-    case 'event':
-      switch ($plugin->getPluginDefinition()['id']) {
-        case 'group_node':
-          // We deny access to view content for anonymous/outsider roles.
-          if ($role->isOutsider() || $role->isAnonymous()) {
-            $is_allowed = FALSE;
-          }
-          break;
-
-      }
-      break;
-  }
 }
 
 /**
@@ -151,20 +109,6 @@ function eic_groups_views_data() {
       'title' => t('Resend invitation'),
       'help' => t('Provide a link to resend an invitation.'),
       'id' => 'resend_invitation',
-    ],
-  ];
-  $data['groups_field_data']['group_visibility_custom_restricted_organisations'] = [
-    'title' => t('Visibility Custom: Restricted organisations'),
-    'help' => t('The chosen organisations for group Custom - Restricted email organisations.'),
-    'field' => [
-      'id' => 'group_visibility_custom_restricted_organisations',
-    ],
-  ];
-  $data['groups_field_data']['group_visibility_custom_restricted_organisation_types'] = [
-    'title' => t('Visibility Custom: Restricted organisations types'),
-    'help' => t('The chosen organisation types for group Custom - Restricted email organisations types.'),
-    'field' => [
-      'id' => 'group_visibility_custom_restricted_organisation_types',
     ],
   ];
   $data['groups_field_data']['group_members_by_role'] = [
@@ -187,7 +131,7 @@ function eic_groups_views_data() {
  */
 function eic_groups_preprocess_views_view_field(&$vars) {
   if ($vars['view']->id() == 'my_invitations' && $vars['field']->options['id'] == 'gid') {
-    /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
     $group_content = $vars['row']->_entity;
 
     /** @var \Drupal\group\Entity\GroupInterface $group */
@@ -257,7 +201,7 @@ function eic_groups_group_content_insert(EntityInterface $entity) {
   ];
 
   if (
-    $entity instanceof GroupContentInterface &&
+    $entity instanceof GroupRelationshipInterface &&
     in_array($entity->getEntity()->bundle(), $bundle_resync_group)
   ) {
     /** @var \Drupal\eic_search\Service\SolrDocumentProcessor $solr_helper */
@@ -282,7 +226,7 @@ function eic_groups_group_content_insert(EntityInterface $entity) {
  * Implements hook_ENTITY_TYPE_update().
  */
 function eic_groups_node_update(EntityInterface $entity) {
-  /** @var \Drupal\group\Entity\GroupContentInterface[] $group_contents */
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface[] $group_contents */
   $group_contents = \Drupal::service('eic_content.helper')->getGroupContentByEntity($entity, [], ["group_node:{$entity->bundle()}"]);
 
   if (empty($group_contents)) {
@@ -333,16 +277,6 @@ function eic_groups_form_group_form_alter(&$form, FormStateInterface $form_state
       ->groupAddForm($form, $form_state);
   }
 
-  // Since the group permissions do not exist when hook_group_insert() is
-  // invoked, we use a submit handler that will be called after it is created.
-  // @todo This might not be sufficient when creating groups programmatically,
-  //   e.g. when migrating groups, we should then create the group permissions
-  //   ourselves and not rely on group_flex module to create the permissions.
-  // Only act on group creation.
-  if ($form_state->getFormObject()->getOperation() == 'add') {
-    $form['actions']['submit']['#submit'][] = 'eic_groups_group_form_submit';
-  }
-
   $form_object = $form_state->getFormObject();
   if ($form_object instanceof EntityForm) {
     $entity = $form_object->getEntity();
@@ -372,14 +306,6 @@ function eic_groups_form_group_form_alter(&$form, FormStateInterface $form_state
       }
     }
   }
-}
-
-/**
- * Custom submit handler for form_group forms.
- */
-function eic_groups_group_form_submit(array $form, FormStateInterface $form_state) {
-  \Drupal::classResolver(FormOperations::class)
-    ->formGroupSubmit($form, $form_state);
 }
 
 /**
@@ -620,29 +546,6 @@ function eic_groups_group_access(EntityInterface $entity, $operation, AccountInt
 }
 
 /**
- * Implements hook_group_content_info_alter().
- */
-function eic_groups_group_content_info_alter(array &$definitions) {
-  // Overrides the standard group invitation plugin class provided by
-  // ginvite module.
-  if (isset($definitions['group_invitation'])) {
-    $definitions['group_invitation']['class'] = '\Drupal\eic_groups\Plugin\GroupContentEnabler\GroupInvitation';
-  }
-
-  foreach ($definitions as &$definition) {
-    if (strpos($definition['id'], 'group_node') === FALSE) {
-      continue;
-    }
-
-    // Overrides the standard group content node class in order to fix access
-    // to the operation links.
-    $definition['class'] = '\Drupal\eic_groups\Plugin\GroupContentEnabler\GroupNode';
-    // Overrides the group content access controll handler class.
-    $definition['handlers']['access'] = '\Drupal\eic_groups\Access\GroupContentNodeAccessControlHandler';
-  }
-}
-
-/**
  * Implements hook_ENTITY_TYPE_access().
  */
 function eic_groups_flagging_access(EntityInterface $entity, $operation, AccountInterface $account) {
@@ -669,7 +572,7 @@ function eic_groups_flagging_access(EntityInterface $entity, $operation, Account
       }
       elseif ($flagged_entity->getEntityTypeId() === 'node') {
         // Get the group content entities related to the node.
-        $group_contents = GroupContent::loadByEntity($flagged_entity);
+        $group_contents = GroupRelationship::loadByEntity($flagged_entity);
 
         // Node does not belong to any group, so we do nothing.
         if (empty($group_contents)) {
@@ -748,7 +651,7 @@ function eic_groups_node_delete(EntityInterface $entity) {
       // will not be shown in the group header until we clear all cache
       // manually. But first, we need to make sure this book node
       // belongs to a group.
-      $group_contents = GroupContent::loadByEntity($entity);
+      $group_contents = GroupRelationship::loadByEntity($entity);
       if (!$group_contents) {
         return;
       }
@@ -789,15 +692,6 @@ function eic_groups_entity_base_field_info(EntityTypeInterface $entity_type) {
 function eic_groups_entity_predelete(EntityInterface $entity) {
   if ($entity->getEntityTypeId() !== 'group') {
     return;
-  }
-
-  // Delete group permissions before deleting the group. If we don't do this
-  // we will have an error because redirect module will call the method toUrl()
-  // from the group permission entity. At that point the group has already been
-  // deleted which means it cannot retrieve the canonical url of the group
-  // permissions since it requires the group ID as route parameter.
-  if ($group_permissions = \Drupal::service('group_permission.group_permissions_manager')->loadByGroup($entity)) {
-    $group_permissions->delete();
   }
 }
 
@@ -875,7 +769,7 @@ function eic_groups_flag_action_access(
       /** @var \Drupal\Core\Entity\EntityInterface $commented_entity */
       $commented_entity = $flaggable->getCommentedEntity();
 
-      $group_contents = GroupContent::loadByEntity($commented_entity);
+      $group_contents = GroupRelationship::loadByEntity($commented_entity);
 
       // Entity does not belong to any group, so we do nothing.
       if (empty($group_contents)) {
@@ -931,7 +825,7 @@ function eic_groups_flag_action_access(
       }
 
       // Get the group content entities related to the node.
-      $group_contents = GroupContent::loadByEntity($flaggable);
+      $group_contents = GroupRelationship::loadByEntity($flaggable);
 
       // Node does not belong to any group, so we do nothing.
       if (empty($group_contents)) {
@@ -1045,7 +939,7 @@ function eic_groups_metatags_alter(array &$metatags, array &$context) {
  */
 function eic_groups_entity_delete(\Drupal\Core\Entity\EntityInterface $entity) {
   // We delete only nodes.
-  if (!$entity instanceof \Drupal\group\Entity\GroupContentInterface || !$entity->getEntity() instanceof \Drupal\node\NodeInterface) {
+  if (!$entity instanceof \Drupal\group\Entity\GroupRelationshipInterface || !$entity->getEntity() instanceof \Drupal\node\NodeInterface) {
     return;
   }
 

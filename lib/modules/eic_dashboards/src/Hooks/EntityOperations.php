@@ -8,7 +8,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group_content_menu\GroupContentMenuInterface;
 use Drupal\node\NodeInterface;
@@ -74,8 +74,8 @@ class EntityOperations implements ContainerInjectionInterface {
 
     foreach (group_content_menu_get_menus_per_group($group) as $group_menu) {
       if (
-        $group_menu->getGroupContentType()
-          ->getContentPlugin()
+        $group_menu->getRelationshipType()
+          ->getPlugin()
           ->getPluginId() == 'group_content_menu:group_main_menu'
       ) {
         // Create menu item.
@@ -115,15 +115,15 @@ class EntityOperations implements ContainerInjectionInterface {
         $this->cacheBackend->invalidate('dashboard:group:' . $entity->id());
       }
     }
-    if ($entity instanceof GroupContentInterface) {
-      /** @var GroupContentInterface $entity */
+    if ($entity instanceof GroupRelationshipInterface) {
+      /** @var GroupRelationshipInterface $entity */
       $group = $entity->getGroup();
       if ($group->bundle() === 'group') {
         $this->cacheBackend->invalidate('dashboard:group:' . $group->id());
       }
     }
     if ($entity instanceof NodeInterface) {
-      /** @var GroupContentInterface[] $groupcontent */
+      /** @var GroupRelationshipInterface[] $groupcontent */
       $groupcontent = $this->entityTypeManager
         ->getStorage('group_content')->loadByEntity($entity);
       if ($groupcontent) {

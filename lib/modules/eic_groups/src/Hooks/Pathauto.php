@@ -136,7 +136,7 @@ class Pathauto implements ContainerInjectionInterface {
     }
 
     if ($group_contents = $this->entityTypeManager->getStorage('group_content')->loadByEntity($node)) {
-      /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
       $group_content = reset($group_contents);
       if ($group_content->hasTranslation($node->language()->getId())) {
         $group = $group_content->getGroup()->getTranslation($node->language()->getId());

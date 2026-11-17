@@ -17,7 +17,6 @@ use Drupal\eic_user_login\Constants\SmedUserStatuses;
 use Drupal\file\Entity\File;
 use Drupal\flag\FlagCountManagerInterface;
 use Drupal\group\Entity\GroupInterface;
-use Drupal\group_flex\GroupFlexGroup;
 use Drupal\taxonomy\TermInterface;
 use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
@@ -198,14 +197,11 @@ class UserHelper {
       return TRUE;
     }
 
-    if ($group_related) {
-      $group_flex_group = \Drupal::service('group_flex.group');
-      $group_visibility = $group_flex_group->getGroupVisibility($group_related);
-
-      if ($group_visibility === GroupVisibilityType::GROUP_VISIBILITY_SENSITIVE) {
-        return FALSE;
-      }
-    }
+    // A sensitive-group veto stood here, vetoing power users on groups whose
+    // group_flex visibility was 'sensitive'. That module is gone and sensitive
+    // groups are out of scope; every group resolved to 'public', so the veto
+    // never fired. $group_related is kept in the signature because callers
+    // still pass it.
 
     foreach ($account->getRoles(TRUE) as $role) {
       switch ($role) {
@@ -227,9 +223,16 @@ class UserHelper {
    * @return string
    */
   public static function getUserAvatar(UserInterface $user): string {
-    $media_picture = $user->get('field_media')->referencedEntities();
+    $media_picture = $user->hasField('field_media') && !$user->get('field_media')->isEmpty()
+      ? $user->get('field_media')->referencedEntities()
+      : [];
+    $image_target = $media_picture
+      && $media_picture[0]->hasField('oe_media_image')
+      && !$media_picture[0]->get('oe_media_image')->isEmpty()
+      ? $media_picture[0]->get('oe_media_image')->target_id
+      : NULL;
     /** @var File|NULL $file */
-    $file = $media_picture ? File::load($media_picture[0]->get('oe_media_image')->target_id) : '';
+    $file = $image_target ? File::load($image_target) : '';
 
     return $file ? \Drupal::service('file_url_generator')
       ->transformRelative(\Drupal::service('file_url_generator')->generateAbsoluteString($file->get('uri')->value)) : '';

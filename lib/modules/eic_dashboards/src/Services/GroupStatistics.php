@@ -110,43 +110,19 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns groups grouped by visibility.
    */
   public function getGroupsByVisibility($groupType): array {
-    $query = $this->connection->select('oec_group_visibility', 'ogv');
-    $query->innerJoin('groups', 'g', 'g.id = ogv.gid');
-
-    if($groupType == 'group') {
-      $query->innerJoin('content_moderation_state_field_data', 'cmsfd', 'g.id = cmsfd.content_entity_id');
-    }
-
-    $query->addExpression('COUNT(ogv.type)', 'groups_count');
-    $query->addExpression('ogv.type', 'visibility');
-    $query->condition('g.type', $groupType);
-
-    if($groupType == 'group') {
-      $query->condition('cmsfd.content_entity_type_id', 'group');
-      $query->condition('cmsfd.moderation_state', 'published');
-    }
-
-    $query->groupBy('visibility');
-    $query->orderBy('groups_count', 'DESC');
-    $results = $query->execute()->fetchAll();
-
-    $data = [];
-
-    foreach ($results as $result) {
-      $data[] = [
-        'name' => ucfirst(explode("_", $result->visibility)[0]),
-        'y' => (int) $result->groups_count,
-      ];
-    }
-
-    return $data;
+    // This grouped groups by their oec_group_flex visibility record. That
+    // module is no longer installed and its oec_group_visibility table is
+    // gone. The table never held a row in any environment, so the query always
+    // returned no rows and this always produced an empty chart series;
+    // querying the dropped table would now throw.
+    return [];
   }
 
   /**
    * Returns top groups by number of members.
    */
   public function getTopGroupsByMembers($membershipType, $range = 10, $days = NULL): array {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('groups_field_data', 'gfd', 'gfd.id = gcfd.gid');
     $query->innerJoin('users_field_data', 'ufd', 'gcfd.entity_id = ufd.uid');
     $query->innerJoin('content_moderation_state_field_data', 'cmsfd', 'cmsfd.content_entity_id = gcfd.gid');
@@ -183,7 +159,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns top groups by number of given content type.
    */
   public function getTopGroupsByContentType($contentType, $range = 10, $days = NULL): array {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('groups_field_data', 'gfd', 'gfd.id = gcfd.gid');
     $query->innerJoin('content_moderation_state_field_data', 'cmsfd', 'cmsfd.content_entity_id = gcfd.gid');
     $query->addExpression('gcfd.gid', 'group_id');
@@ -366,7 +342,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns number of groups with at least one member.
    */
   public function getNumberOfGroupsWithMembers($membershipType): array|int {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->addExpression('COUNT(DISTINCT gcfd.gid)', 'groups_count');
     $query->condition('gcfd.type', $membershipType);
     $query->condition('gcfd.label', ['Community Manager'], 'NOT IN');
@@ -495,7 +471,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns the number of given group members.
    */
   public function getGroupMembers(GroupInterface $group) {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->addExpression('COUNT(DISTINCT entity_id)', 'count');
     $query->condition('gcfd.gid', $group->id());
     $query->condition('gcfd.type', $group->getGroupType()->id() . '-group_membership');
@@ -508,7 +484,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns number of group members that joined in the past days.
    */
   public function getGroupMembersRegisteredPastDays(GroupInterface $group, $days = 30) {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->fields('gcfd', ['entity_id']);
     $query->condition('gcfd.gid', $group->id());
     $query->condition('gcfd.type', $group->getGroupType()->id() . '-group_membership');
@@ -521,7 +497,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns number of group members that logged in the past days.
    */
   public function getGroupMembersLoggedPastDays(GroupInterface $group, $days = 30): int {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('profile', 'p', 'gcfd.entity_id = p.profile_id');
     $query->innerJoin('users_field_data', 'ufd', 'p.profile_id = ufd.uid');
     $query->fields('gcfd', ['entity_id']);
@@ -536,7 +512,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns group members grouped by country.
    */
   public function getGroupMembersGroupedByCountry(GroupInterface $group, $countryId, $groupId): array {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('profile', 'p', 'gcfd.entity_id = p.profile_id');
     $query->innerJoin('profile__field_location_address', 'pfla', 'p.profile_id = pfla.entity_id');
     $query->addExpression('gcfd.gid', 'group_id');
@@ -566,7 +542,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns group members grouped by vocabulary.
    */
   public function getGroupMembersPerTaxonomyTerm(GroupInterface $group, $taxonomyField, $argumentId, $groupId): array {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('profile', 'p', 'gcfd.entity_id = p.profile_id');
     $query->innerJoin('profile__' . $taxonomyField, 'ptf', 'p.profile_id = ptf.entity_id');
     $query->addExpression('gcfd.gid', 'group_id');
@@ -595,7 +571,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns number of content type's nodes of a given group in a given period.
    */
   public function getNumberOfContentInGivenPeriod(GroupInterface $group, $contentType, $days = NULL) {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->condition('gcfd.gid', $group->id());
     $query->condition('gcfd.type', $contentType);
 
@@ -610,7 +586,7 @@ class GroupStatistics implements GroupStatisticsInterface {
    * Returns number of group nodes that belong to group, grouped by taxonomy term.
    */
   public function getGroupNodesOfGroupByTerm($group, $groupNodeType, $taxonomyField): array {
-    $query = $this->connection->select('group_content_field_data', 'gcfd');
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd');
     $query->innerJoin('node__' . $taxonomyField, 'ntf', 'gcfd.entity_id = ntf.entity_id');
     $query->condition('gcfd.gid', $group->id());
     $query->condition('gcfd.type', $groupNodeType);

@@ -90,7 +90,7 @@ function eic_comments_form_alter(&$form, FormStateInterface $form_state, $form_i
       $group = $group_content->getGroup();
       $groupType = $group->getGroupType();
 
-      $installedContentPlugins = $groupType->getInstalledContentPlugins()->getInstanceIds();
+      $installedContentPlugins = $groupType->getInstalledPlugins()->getInstanceIds();
       if (in_array("group_node:{$entity->bundle()}", $installedContentPlugins)) {
         $can_edit_comment_settings = EICGroupsHelper::userIsGroupAdmin($group, $current_user);
       }

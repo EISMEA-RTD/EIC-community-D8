@@ -13,7 +13,7 @@ use Drupal\eic_messages\Util\LogMessageTemplates;
 use Drupal\eic_search\Service\SolrDocumentProcessor;
 use Drupal\eic_user\UserHelper;
 use Drupal\flag\FlaggingInterface;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\GroupMembership;
 use Drupal\message\MessageInterface;
@@ -72,8 +72,8 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
   ) {
     switch ($content_entity->getEntityTypeId()) {
       case 'group_content':
-        /** @var \Drupal\group\Entity\GroupContentInterface $content_entity */
-        if ($content_entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+        /** @var \Drupal\group\Entity\GroupRelationshipInterface $content_entity */
+        if ($content_entity->getPlugin()->getPluginId() !== 'group_membership') {
           break;
         }
 
@@ -102,8 +102,8 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
 
     switch ($content_entity->getEntityTypeId()) {
       case 'group_content':
-        /** @var \Drupal\group\Entity\GroupContentInterface $content_entity */
-        if ($content_entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+        /** @var \Drupal\group\Entity\GroupRelationshipInterface $content_entity */
+        if ($content_entity->getPlugin()->getPluginId() !== 'group_membership') {
           break;
         }
 
@@ -151,8 +151,8 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
 
     switch ($entity->getEntityTypeId()) {
       case 'group_content':
-        /** @var \Drupal\group\Entity\GroupContentInterface $entity */
-        if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+        /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
+        if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
           break;
         }
 
@@ -189,7 +189,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    *
    * @param \Drupal\Core\Session\AccountInterface $account
    *   Currently logged in account, anonymous users are not allowed.
-   * @param \Drupal\group\Entity\GroupContentInterface $entity
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $entity
    *   The group content entity against the access check is made.
    *
    * @return \Drupal\Core\Access\AccessResultInterface
@@ -197,7 +197,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    */
   private function canRequestGroupTransferOwnership(
     AccountInterface $account,
-    GroupContentInterface $entity
+    GroupRelationshipInterface $entity
   ) {
     $group = $entity->getGroup();
 
@@ -208,7 +208,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
 
     // We return access denied if the group content entity is not a group
     // membership.
-    if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+    if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
       return $access;
     }
 
@@ -227,10 +227,10 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
     // We return access denied if there are open requests for at least one
     // group admin.
     foreach ($group_memberships as $group_membership) {
-      if ($group_membership->getGroupContent()->id() === $entity->id()) {
+      if ($group_membership->getGroupRelationship()->id() === $entity->id()) {
         continue;
       }
-      if ($this->hasOpenRequest($group_membership->getGroupContent(), $account)) {
+      if ($this->hasOpenRequest($group_membership->getGroupRelationship(), $account)) {
         return $access;
       }
     }
@@ -297,7 +297,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    *
    * @param \Drupal\Core\Session\AccountInterface $account
    *   Currently logged in account, anonymous users are not allowed.
-   * @param \Drupal\group\Entity\GroupContentInterface $entity
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $entity
    *   The group content entity against the access check is made.
    *
    * @return \Drupal\Core\Access\AccessResultInterface
@@ -305,7 +305,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    */
   private function canCloseRequestGroupTransferOwnership(
     AccountInterface $account,
-    GroupContentInterface $entity
+    GroupRelationshipInterface $entity
   ) {
     $group = $entity->getGroup();
 
@@ -317,7 +317,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
 
     // We return access denied if the group content entity is not a group
     // membership.
-    if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+    if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
       return $access;
     }
 
@@ -403,7 +403,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    *
    * @param \Drupal\Core\Session\AccountInterface $account
    *   Currently logged in account, anonymous users are not allowed.
-   * @param \Drupal\group\Entity\GroupContentInterface $entity
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $entity
    *   The group content entity against the access check is made.
    *
    * @return \Drupal\Core\Access\AccessResultInterface
@@ -411,7 +411,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    */
   private function canCancelRequestGroupTransferOwnership(
     AccountInterface $account,
-    GroupContentInterface $entity
+    GroupRelationshipInterface $entity
   ) {
     $group = $entity->getGroup();
 
@@ -423,7 +423,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
 
     // We return access denied if the group content entity is not a group
     // membership.
-    if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+    if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
       return $access;
     }
 
@@ -514,10 +514,10 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    *
    * @param \Drupal\group\Entity\GroupInterface $group
    *   The group entity.
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The group content entity related to the new owner.
    */
-  private function transferGroupOwnership(GroupInterface $group, GroupContentInterface $group_content) {
+  private function transferGroupOwnership(GroupInterface $group, GroupRelationshipInterface $group_content) {
     /** @var \Drupal\group\GroupMembership $old_owner_membership */
     $old_owner_membership = EICGroupsHelper::getGroupOwner($group, TRUE);
 
@@ -559,7 +559,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
    *   Roles to delete from the membership.
    */
   public function updateMembershipRoles(GroupMembership $membership, array $add_roles = [], array $delete_roles = []) {
-    $group_content = $membership->getGroupContent();
+    $group_content = $membership->getGroupRelationship();
 
     // Add roles.
     foreach ($add_roles as $new_role) {
@@ -633,7 +633,7 @@ class TransferOwnershipRequestHandler extends AbstractRequestHandler {
 
     foreach ($group_memberships as $group_membership) {
       // Invalidate flagged entity cache.
-      Cache::invalidateTags($group_membership->getGroupContent()->getCacheTagsToInvalidate());
+      Cache::invalidateTags($group_membership->getGroupRelationship()->getCacheTagsToInvalidate());
     }
   }
 

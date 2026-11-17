@@ -14,11 +14,10 @@ use Drupal\eic_messages\ActivityStreamOperationTypes;
 use Drupal\eic_messages\Service\MessageBusInterface;
 use Drupal\eic_messages\Util\ActivityStreamMessageTemplates;
 use Drupal\eic_user\UserHelper;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\GroupMembershipLoader;
-use Drupal\group\Plugin\GroupContentEnablerManagerInterface;
-use Drupal\group_flex\GroupFlexGroup;
+use Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface;
 use Drupal\message\Entity\Message;
 use Drupal\message_subscribe\SubscribersInterface;
 use Drupal\node\NodeInterface;
@@ -58,7 +57,7 @@ class ShareManager {
   /**
    * The group content enabler manager.
    *
-   * @var \Drupal\group\Plugin\GroupContentEnablerManagerInterface
+   * @var \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface
    */
   private $groupContentPluginManager;
 
@@ -68,13 +67,6 @@ class ShareManager {
    * @var \Drupal\group\GroupMembershipLoader
    */
   private $groupMembershipLoader;
-
-  /**
-   * The group flex group service.
-   *
-   * @var \Drupal\group_flex\GroupFlexGroup
-   */
-  private $groupFlexGroup;
 
   /**
    * The EIC message bus.
@@ -96,19 +88,16 @@ class ShareManager {
   /**
    * @param \Drupal\eic_groups\EICGroupsHelperInterface $groups_helper
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   * @param \Drupal\group\Plugin\GroupContentEnablerManagerInterface $plugin_manager
+   * @param \Drupal\group\Plugin\Group\Relation\GroupRelationTypeManagerInterface $plugin_manager
    * @param \Drupal\group\GroupMembershipLoader $group_membership_loader
-   * @param \Drupal\group_flex\GroupFlexGroup $group_flex_group
-   * @param \Drupal\eic_messages\Service\MessageBusInterface $message_bus
    * @param \Drupal\message_subscribe\SubscribersInterface $message_subscribers_service
    * @param \Drupal\Core\Session\AccountProxyInterface $account
    */
   public function __construct(
     EICGroupsHelperInterface $groups_helper,
     EntityTypeManagerInterface $entity_type_manager,
-    GroupContentEnablerManagerInterface $plugin_manager,
+    GroupRelationTypeManagerInterface $plugin_manager,
     GroupMembershipLoader $group_membership_loader,
-    GroupFlexGroup $group_flex_group,
     MessageBusInterface $message_bus,
     SubscribersInterface $message_subscribers_service,
     AccountProxyInterface $account
@@ -117,7 +106,6 @@ class ShareManager {
     $this->entityTypeManager = $entity_type_manager;
     $this->groupContentPluginManager = $plugin_manager;
     $this->groupMembershipLoader = $group_membership_loader;
-    $this->groupFlexGroup = $group_flex_group;
     $this->messageBus = $message_bus;
     $this->messageSubscribersService = $message_subscribers_service;
     $this->currentUser = $account;
@@ -225,7 +213,7 @@ class ShareManager {
    *   The group to filter on. If null, shared entities will be returned for all
    *   groups.
    *
-   * @return \Drupal\group\Entity\GroupContentInterface[]
+   * @return \Drupal\group\Entity\GroupRelationshipInterface[]
    *   The list of found group_content entities.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
@@ -245,9 +233,10 @@ class ShareManager {
       $group_types = $this->entityTypeManager->getStorage('group_type')->loadMultiple();
       $group_type_conditions = [];
       foreach ($group_types as $group_type) {
-        if ($group_type->hasContentPlugin(self::GROUP_CONTENT_SHARED_PLUGIN_ID)) {
-          $group_type_conditions[] = $group_type->getContentPlugin(self::GROUP_CONTENT_SHARED_PLUGIN_ID)
-            ->getContentTypeConfigId();
+        if ($group_type->hasPlugin(self::GROUP_CONTENT_SHARED_PLUGIN_ID)) {
+          $group_type_conditions[] = $this->entityTypeManager
+            ->getStorage('group_content_type')
+            ->getRelationshipTypeId($group_type->id(), self::GROUP_CONTENT_SHARED_PLUGIN_ID);
         }
       }
       $query->condition('type', $group_type_conditions, 'IN');
@@ -353,10 +342,12 @@ class ShareManager {
       return FALSE;
     }
 
-    // Allow only selected visibility types.
-    if (!in_array($this->groupFlexGroup->getGroupVisibility($target_group), $target_group_visibility_types)) {
-      return FALSE;
-    }
+    // The group visibility gate that stood here came from group_flex, which
+    // this project no longer installs. It always passed: the only caller chain
+    // leaves $target_group_visibility_types at its default ['public'], and
+    // getGroupVisibility() returned 'public' for every group -- every group
+    // type except event and group was fixed to public at group-type level, and
+    // only research_institution groups exist.
 
     // Exclude non published groups.
     if (!$target_group->isPublished()) {
@@ -386,9 +377,8 @@ class ShareManager {
    *   The type to be used for the group_content entity.
    */
   public function defineGroupContentType(GroupInterface $target_group) {
-    return $target_group->getGroupType()
-      ->getContentPlugin(self::GROUP_CONTENT_SHARED_PLUGIN_ID)
-      ->getContentTypeConfigId();
+    return $this->entityTypeManager->getStorage('group_content_type')
+      ->getRelationshipTypeId($target_group->bundle(), self::GROUP_CONTENT_SHARED_PLUGIN_ID);
   }
 
   /**
@@ -410,7 +400,7 @@ class ShareManager {
     ?string $message
   ) {
     // Create the group content entity.
-    $shared_group_content = GroupContent::create([
+    $shared_group_content = GroupRelationship::create([
       'type' => $this->defineGroupContentType($target_group),
       'gid' => $target_group->id(),
       'entity_id' => $node->id(),

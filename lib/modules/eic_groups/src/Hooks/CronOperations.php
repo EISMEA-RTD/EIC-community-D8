@@ -4,7 +4,6 @@ namespace Drupal\eic_groups\Hooks;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
-use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Queue\QueueFactory;
@@ -12,18 +11,11 @@ use Drupal\Core\Queue\QueueWorkerManagerInterface;
 use Drupal\Core\Queue\SuspendQueueException;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\State\StateInterface;
-use Drupal\eic_content\Constants\DefaultContentModerationStates;
-use Drupal\eic_groups\Constants\GroupVisibilityType;
 use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_groups\GroupsModerationHelper;
-use Drupal\eic_groups\Plugin\GroupContentEnabler\GroupInvitation as GroupContentEnablerGroupInvitation;
 use Drupal\eic_messages\Service\MessageBus;
-use Drupal\ginvite\Plugin\GroupContentEnabler\GroupInvitation;
 use Drupal\group\Entity\Group;
-use Drupal\group\Entity\GroupContent;
 use Drupal\group\Entity\GroupInterface;
-use Drupal\message\Entity\Message;
-use Drupal\oec_group_flex\GroupVisibilityDatabaseStorageInterface;
 use Drupal\pathauto\PathautoGeneratorInterface;
 use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
@@ -202,7 +194,6 @@ class CronOperations implements ContainerInjectionInterface {
     }
 
     if (!$toggle || $toggle->isCronEnabled('eic_groups_invitation_reminder')) {
-      $this->processGroupInvitationsReminder();
     }
 
     if (!$toggle || $toggle->isCronEnabled('eic_groups_solr_reindex')) {
@@ -229,7 +220,7 @@ class CronOperations implements ContainerInjectionInterface {
             continue;
           }
 
-          $installedContentPluginIds = $group->getGroupType()->getInstalledContentPlugins()->getInstanceIds();
+          $installedContentPluginIds = $group->getGroupType()->getInstalledPlugins()->getInstanceIds();
           foreach ($installedContentPluginIds as $key => $pluginId) {
             $installedContentPluginIds[$key] = 'group-' . str_replace(':', '-', $pluginId);
           }
@@ -324,15 +315,8 @@ class CronOperations implements ContainerInjectionInterface {
         'field_event_executing_user' => ['target_id' => $group->getOwnerId()],
       ];
 
-      $is_group_sensitive = $this->groupsHelper->isGroupSensitive($group);
-
-      // Remove all uids that has no access to sensitive group.
-      $group_uids = array_filter($uids, function(int $uid) use ($is_group_sensitive) {
-        $user = User::load($uid);
-
-        return
-          $user instanceof UserInterface &&
-          (!$is_group_sensitive || $user->hasRole('sensitive'));
+      $group_uids = array_filter($uids, function (int $uid) {
+        return User::load($uid) instanceof UserInterface;
       });
 
       foreach ($group_uids as $uid) {
@@ -341,112 +325,6 @@ class CronOperations implements ContainerInjectionInterface {
     }
 
     $this->state->set('last_cron_pending_group_approval_time', $now);
-  }
-
-  /**
-   * This notification is sent to SU to remind him of his pending invitation to a group.
-   */
-  private function processGroupInvitationsReminder() {
-    // Value returned is timestamp.
-    $last_reminder_time = $this->state->get('last_cron_group_invite_time', 0);
-    $now = time();
-
-    $cron_interval_group_invite = $this->eicGroupSettings->get('eic_groups_cron_settings.cron_interval_group_invite_time') ?
-      $this->eicGroupSettings->get('eic_groups_cron_settings.cron_interval_group_invite_time') :
-      86400;
-
-    if (0 < ($last_reminder_time + $cron_interval_group_invite) - $now) {
-      return;
-    }
-
-    // Date from which we want to skip invitation reminders to avoind sending
-    // reminders for old invitations.
-    $skip_invitation_reminder_default_days = $this->eicGroupSettings->get('eic_groups_cron_settings.cron_interval_group_skip_invite_reminder_days') ?
-      $this->eicGroupSettings->get('eic_groups_cron_settings.cron_interval_group_skip_invite_reminder_days') :
-      30;
-    $skip_invitation_reminder_time = new DrupalDateTime('today -' . $skip_invitation_reminder_default_days . ' days');
-
-    // Frequency date to send reminders. By default every 3 days a reminder
-    // will be sent for the same invitation.
-    $reminder_frequency_default_days = $this->eicGroupSettings->get('eic_groups_cron_settings.cron_interval_group_invite_reminder_frequency_days') ?
-      $this->eicGroupSettings->get('eic_groups_cron_settings.cron_interval_group_invite_reminder_frequency_days') :
-      3;
-    $reminder_frequency_time = new DrupalDateTime('today -' . $reminder_frequency_default_days . ' days');
-
-    $query = $this->database->select('group_content_field_data', 'gc_fd');
-    $query->condition('gc_fd.type', '%-group_invitation', 'LIKE');
-    $query->join('group_content__invitation_status', 'gc_is', 'gc_is.entity_id = gc_fd.id');
-    $query->fields('gc_fd', ['id', 'gid', 'entity_id']);
-
-    $query->leftJoin('group_content__field_invitation_reminder_count', 'gc_irc', 'gc_irc.entity_id = gc_fd.id');
-    // Reminders are sent 3 times and therefore, we skip invitations that
-    // reached that limit.
-    $orInvitationReminderCounter = $query->orConditionGroup()
-      ->isNull('gc_irc.field_invitation_reminder_count_value')
-      ->condition('gc_irc.field_invitation_reminder_count_value', GroupContentEnablerGroupInvitation::INVITATION_REMINDER_MAX_COUNT, '<');
-    $query->condition($orInvitationReminderCounter);
-
-    $query->leftJoin('group_content__field_invitation_reminder_date', 'gc_ird', 'gc_ird.entity_id = gc_fd.id');
-    // Reminders are sent every 3 days and therefore we need to grab
-    // invitations where the last reminder date was registered 3 days ago.
-    $orInvitationReminderDate = $query->orConditionGroup()
-      ->isNull('gc_ird.field_invitation_reminder_date_value')
-      ->condition('gc_ird.field_invitation_reminder_date_value', $reminder_frequency_time->getTimestamp(), '<=');
-    $query->condition($orInvitationReminderDate);
-
-    $query->condition('gc_is.invitation_status_value', GroupInvitation::INVITATION_PENDING);
-    $query->condition('gc_fd.created', $skip_invitation_reminder_time->getTimestamp(), '>=');
-    $query->orderBy('gc_fd.id');
-    $results = $query->execute()->fetchAll(\PDO::FETCH_ASSOC);
-
-    foreach ($results as $result) {
-      $uid = $result['entity_id'];
-
-      /** @TODO handle the anonymous invite */
-      if (0 === (int) $uid) {
-        continue;
-      }
-
-      $gid = $result['gid'];
-      $group_content_id = $result['id'];
-
-      $group = Group::load($gid);
-      $invitee = User::load($uid);
-      $group_content = GroupContent::load($group_content_id);
-
-      if (
-        !$group instanceof GroupInterface ||
-        !$invitee instanceof UserInterface ||
-        !$group_content instanceof GroupContent ||
-        $group->get('moderation_state')->value === DefaultContentModerationStates::ARCHIVED_STATE
-      ) {
-        continue;
-      }
-
-      $owner = $group_content->getOwner();
-      $reminder_counter = $group_content->get('field_invitation_reminder_count')->isEmpty() ?
-        1 :
-        (int) $group_content->get('field_invitation_reminder_count')->value + 1;
-
-      $message = Message::create([
-        'template' => 'notify_group_invitation_reminder',
-        'field_group_ref' => ['target_id' => $group->id()],
-        'field_event_executing_user' => ['target_id' => $group->getOwnerId()],
-        'field_invitee' => $invitee,
-        'field_group_invitation' => $group_content,
-        'field_inviter' => $owner,
-      ]);
-
-      $message->setOwnerId($uid);
-
-      $this->messageBus->dispatch($message);
-
-      $group_content->set('field_invitation_reminder_count', $reminder_counter);
-      $group_content->set('field_invitation_reminder_date', $now);
-      $group_content->save();
-    }
-
-    $this->state->set('last_cron_group_invite_time', $now);
   }
 
   /**

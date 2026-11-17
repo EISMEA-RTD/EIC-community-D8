@@ -56,7 +56,7 @@ class GroupContent extends GroupMetricPluginBase {
     $count = 0;
     foreach ($selected_node_types as $node_type) {
       if ($this->groupsHelper->isGroupTypePluginEnabled($group->getGroupType(), 'group_node', $node_type)) {
-        $count += count($group->getContentEntities("group_node:$node_type"));
+        $count += count($group->getRelatedEntities("group_node:$node_type"));
       }
     }
     return $count;

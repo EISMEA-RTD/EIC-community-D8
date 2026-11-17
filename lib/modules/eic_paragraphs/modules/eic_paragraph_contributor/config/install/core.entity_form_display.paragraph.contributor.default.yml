@@ -79,6 +79,8 @@ content:
         platform_member: platform_member
         default: 0
       default_view_mode: external_person
+      form_mode_bind: false
+      apply_to_preview: false
     third_party_settings: {  }
     region: content
 hidden:

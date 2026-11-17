@@ -49,7 +49,7 @@ class GroupMemberCommentCount extends NumericField {
     $conditions = [
       'cfd.uid' => $membership->getEntity()->id(),
     ];
-    /** @var \Drupal\group\Entity\GroupContentInterface $membership */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $membership */
     return $this->groupsStatisticsHelper->getGroupCommentCount($membership->getGroup(), $conditions);
   }
 

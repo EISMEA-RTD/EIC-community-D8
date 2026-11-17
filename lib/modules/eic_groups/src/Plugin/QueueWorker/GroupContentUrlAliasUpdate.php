@@ -5,8 +5,8 @@ namespace Drupal\eic_groups\Plugin\QueueWorker;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueWorkerBase;
-use Drupal\group\Entity\GroupContent;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationship;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\node\NodeInterface;
 use Drupal\pathauto\PathautoGeneratorInterface;
 use Drupal\redirect\Entity\Redirect;
@@ -71,8 +71,8 @@ class GroupContentUrlAliasUpdate extends QueueWorkerBase implements ContainerFac
       return;
     }
 
-    /** @var \Drupal\group\Entity\GroupContent $group_content */
-    $group_content = GroupContent::load($data);
+    /** @var \Drupal\group\Entity\GroupRelationship $group_content */
+    $group_content = GroupRelationship::load($data);
 
     // If we find no group content, we skip the item.
     if (!$group_content) {
@@ -121,10 +121,10 @@ class GroupContentUrlAliasUpdate extends QueueWorkerBase implements ContainerFac
   /**
    * Updates group content URL alias.
    *
-   * @param \Drupal\group\Entity\GroupContentInterface $group_content
+   * @param \Drupal\group\Entity\GroupRelationshipInterface $group_content
    *   The group content entity.
    */
-  private function updateGroupContentAlias(GroupContentInterface $group_content) {
+  private function updateGroupContentAlias(GroupRelationshipInterface $group_content) {
     // Deletes old group content URL alias.
     \Drupal::service('pathauto.alias_storage_helper')->deleteEntityPathAll($group_content);
     // Re-create group content URL alias.

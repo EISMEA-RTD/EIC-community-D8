@@ -5,6 +5,7 @@ namespace Drupal\eic_groups\EventSubscriber;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Path\CurrentPathStack;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\eic_content\Constants\DefaultContentModerationStates;
@@ -34,13 +35,16 @@ class GinviteSubscriber extends GinviteSubscriberBase {
   public function __construct(
     GinviteSubscriberBase $ginvite_subscriber_inner_service,
     GroupInvitationLoader $invitation_loader,
-    AccountInterface $current_user,
     MessengerInterface $messenger,
     LoggerChannelFactoryInterface $logger_factory,
     ConfigFactoryInterface $config_factory,
-    GroupInvitationManager $group_invitation_manager
+    GroupInvitationManager $group_invitation_manager,
+    AccountInterface $current_user,
+    CurrentPathStack $current_path
   ) {
-    parent::__construct($invitation_loader, $current_user, $messenger, $logger_factory, $config_factory, $group_invitation_manager);
+    // ginvite 3.0.5 reordered this constructor and added the current path, so
+    // the decorator follows its order rather than ginvite 2.x's.
+    parent::__construct($invitation_loader, $messenger, $logger_factory, $config_factory, $group_invitation_manager, $current_user, $current_path);
     $this->ginviteSubscriber = $ginvite_subscriber_inner_service;
   }
 

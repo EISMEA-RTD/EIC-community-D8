@@ -13,7 +13,7 @@ use Drupal\eic_media_statistics\EntityFileDownloadCount;
 use Drupal\flag\FlaggingInterface;
 use Drupal\flag\FlagServiceInterface;
 use Drupal\group\Entity\Group;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\message\Entity\Message;
 use Drupal\message\MessageInterface;
@@ -133,10 +133,10 @@ class ProcessorMessage extends DocumentProcessor {
       return;
     }
 
-    $group_contents = GroupContent::loadByEntity($node);
+    $group_contents = GroupRelationship::loadByEntity($node);
 
     if (!empty($group_contents)) {
-      /** @var GroupContent $group_content */
+      /** @var GroupRelationship $group_content */
       $group_content = reset($group_contents);
       $group_id = $group_content->getGroup() instanceof GroupInterface ?
         $group_content->getGroup()->id() :

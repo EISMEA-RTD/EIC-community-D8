@@ -109,14 +109,19 @@ class RouteSubscriber extends RouteSubscriberBase {
    */
   protected function getGroupMembershipBundles() {
     $bundles = [];
+    /** @var \Drupal\group\Entity\Storage\GroupRelationshipTypeStorageInterface $storage */
+    $storage = $this->entityTypeManager->getStorage('group_content_type');
     $group_types = $this->entityTypeManager->getStorage('group_type')->loadMultiple();
     /** @var \Drupal\group\Entity\GroupTypeInterface $group_type */
     foreach ($group_types as $group_type) {
-      if (!$group_type->hasContentPlugin('group_membership')) {
+      if (!$group_type->hasPlugin('group_membership')) {
         continue;
       }
 
-      $bundles[] = $group_type->getContentPlugin('group_membership')->getContentTypeConfigId();
+      // Group 2 moved the relationship type ID off the plugin and onto the
+      // relationship type storage; GroupRelationBase has no equivalent of
+      // GroupContentEnablerBase::getContentTypeConfigId().
+      $bundles[] = $storage->getRelationshipTypeId($group_type->id(), 'group_membership');
     }
     return $bundles;
   }

@@ -17,8 +17,8 @@ use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_overviews\GlobalOverviewPages;
 use Drupal\eic_overviews\GroupOverviewPages;
 use Drupal\eic_user\UserHelper;
-use Drupal\group\Entity\GroupContent;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationship;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\Entity\GroupTypeInterface;
 use Drupal\node\NodeInterface;
@@ -140,7 +140,7 @@ class GroupBreadcrumbBuilder implements BreadcrumbBuilderInterface {
         $node = $route_match->getParameter('node');
 
         if ($node instanceof NodeInterface) {
-          $applies = GroupContent::loadByEntity($node) ? TRUE : FALSE;
+          $applies = GroupRelationship::loadByEntity($node) ? TRUE : FALSE;
         }
         break;
 
@@ -149,7 +149,7 @@ class GroupBreadcrumbBuilder implements BreadcrumbBuilderInterface {
       case 'entity.group_content.user_cancel_request':
         $group_content = $route_match->getParameter('group_content');
 
-        if (!$group_content instanceof GroupContentInterface) {
+        if (!$group_content instanceof GroupRelationshipInterface) {
           break;
         }
 
@@ -165,7 +165,7 @@ class GroupBreadcrumbBuilder implements BreadcrumbBuilderInterface {
           break;
         }
 
-        $applies = $group_content->getContentPlugin()->getPluginId() === 'group_membership';
+        $applies = $group_content->getPlugin()->getPluginId() === 'group_membership';
         break;
 
     }
@@ -316,10 +316,10 @@ class GroupBreadcrumbBuilder implements BreadcrumbBuilderInterface {
       case 'entity.group_content.user_close_request':
       case 'entity.group_content.user_cancel_request':
       case 'ginvite.invitation.accept':
-        /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+        /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
         $group_content = $route_match->getParameter('group_content');
 
-        if (!$group_content instanceof GroupContentInterface) {
+        if (!$group_content instanceof GroupRelationshipInterface) {
           break;
         }
 

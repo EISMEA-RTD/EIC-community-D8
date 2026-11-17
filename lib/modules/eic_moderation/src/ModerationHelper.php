@@ -8,7 +8,7 @@ use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\eic_content\Constants\DefaultContentModerationStates;
 use Drupal\eic_groups\GroupsModerationHelper;
 use Drupal\eic_moderation\Constants\EICContentModeration;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\user\UserInterface;
 
 /**
@@ -68,7 +68,7 @@ class ModerationHelper {
     }
     else {
       $check_entity = $entity;
-      if ($entity instanceof GroupContentInterface) {
+      if ($entity instanceof GroupRelationshipInterface) {
         $check_entity = $entity->getEntity();
       }
 
@@ -148,7 +148,7 @@ class ModerationHelper {
     }
     else {
       $check_entity = $entity;
-      if ($entity instanceof GroupContentInterface) {
+      if ($entity instanceof GroupRelationshipInterface) {
         $check_entity = $entity->getEntity();
       }
 

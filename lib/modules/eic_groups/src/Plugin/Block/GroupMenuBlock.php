@@ -6,7 +6,7 @@ use Drupal\Core\Cache\Cache;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Url;
 use Drupal\eic_overviews\GroupOverviewPages;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group_content_menu\Plugin\Block\GroupMenuBlock as GroupMenuBlockBase;
 use Drupal\node\NodeInterface;
@@ -96,7 +96,7 @@ class GroupMenuBlock extends GroupMenuBlockBase implements ContainerFactoryPlugi
       return;
     }
 
-    $group_contents = GroupContent::loadByEntity($node);
+    $group_contents = GroupRelationship::loadByEntity($node);
 
     if (empty($group_contents)) {
       return;
@@ -199,9 +199,9 @@ class GroupMenuBlock extends GroupMenuBlockBase implements ContainerFactoryPlugi
     // Group menu plugin ID that will be used to load the group content entity.
     $group_menu_plugin_id = 'group_content_menu:group_main_menu';
 
-    /** @var \Drupal\group\Entity\Storage\GroupContentStorage $groupStorage */
+    /** @var \Drupal\group\Entity\Storage\GroupRelationshipStorage $groupStorage */
     $groupStorage = $this->entityTypeManager->getStorage('group_content');
-    $contentPluginId = $this->loadByContentPluginId($group_menu_plugin_id, $entity->id());
+    $contentPluginId = $this->loadByPluginId($group_menu_plugin_id, $entity->id());
 
     if (empty($contentPluginId)) {
       return NULL;
@@ -217,11 +217,11 @@ class GroupMenuBlock extends GroupMenuBlockBase implements ContainerFactoryPlugi
   /**
    * {@inheritdoc}
    */
-  private function loadByContentPluginId($plugin_id, $group_id) {
+  private function loadByPluginId($plugin_id, $group_id) {
     // If no responsible group content types were found, we return nothing.
-    /** @var \Drupal\group\Entity\Storage\GroupContentTypeStorageInterface $storage */
+    /** @var \Drupal\group\Entity\Storage\GroupRelationshipTypeStorageInterface $storage */
     $storage = $this->entityTypeManager->getStorage('group_content_type');
-    $group_content_types = $storage->loadByContentPluginId($plugin_id);
+    $group_content_types = $storage->loadByPluginId($plugin_id);
     if (empty($group_content_types)) {
       return [];
     }

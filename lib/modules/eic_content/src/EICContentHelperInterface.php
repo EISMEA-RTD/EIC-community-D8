@@ -10,7 +10,7 @@ use Drupal\Core\Entity\ContentEntityInterface;
 interface EICContentHelperInterface {
 
   /**
-   * Get all GroupContent entities that represent a given entity.
+   * Get all GroupRelationship entities that represent a given entity.
    *
    * Returns FALSE when group_content module is not enabled.
    *
@@ -21,8 +21,8 @@ interface EICContentHelperInterface {
    * @param array $filter_group_content_types
    *   Array of group content types to be filtered by.
    *
-   * @return bool|\Drupal\group\Entity\GroupContentInterface[]
-   *   A list of GroupContent entities which refer to the given entity.
+   * @return bool|\Drupal\group\Entity\GroupRelationshipInterface[]
+   *   A list of GroupRelationship entities which refer to the given entity.
    */
   public function getGroupContentByEntity(
     ContentEntityInterface $entity,

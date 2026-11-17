@@ -2,6 +2,7 @@
 
 namespace Drupal\eic_vod\StreamWrapper;
 
+use Drupal\Core\Utility\Error;
 use Drupal\Core\StreamWrapper\StreamWrapperInterface;
 use Drupal\Core\StreamWrapper\StreamWrapperManager;
 use Drupal\Core\StreamWrapper\StreamWrapperManagerInterface;
@@ -118,7 +119,7 @@ class VODStream implements StreamWrapperInterface {
       $this->stream = $response->getBody();
     } catch (\Exception $e) {
       if ($options & STREAM_REPORT_ERRORS) {
-        watchdog_exception('eic_vod', $e);
+        Error::logException(\Drupal::logger('eic_vod'), $e);
       }
       return FALSE;
     }

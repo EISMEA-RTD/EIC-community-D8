@@ -12,7 +12,6 @@ use Drupal\eic_user\UserHelper;
 use Drupal\group\Access\GroupPermissionHandlerInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\Plugin\views\access\GroupPermission;
-use Drupal\oec_group_features\GroupFeatureHelper;
 use Drupal\views\Annotation\ViewsAccess;
 use Drupal\views\Plugin\views\access\AccessPluginBase;
 use Drupal\workflows\WorkflowInterface;

@@ -190,7 +190,7 @@ class GroupStatisticsStorage implements GroupStatisticsStorageInterface {
    */
   private function calculateGroupMembersStatistics(GroupInterface $group) {
     // Query to count number of members.
-    $query_members = $this->connection->select('group_content_field_data', 'gc_fd')
+    $query_members = $this->connection->select('group_relationship_field_data', 'gc_fd')
       ->fields('gc_fd', ['gid'])
       ->condition('gc_fd.gid', $group->id())
       ->condition('gc_fd.type', "{$group->bundle()}-group_membership");
@@ -216,7 +216,7 @@ class GroupStatisticsStorage implements GroupStatisticsStorageInterface {
       "{$group->bundle()}-group_node-video",
     ];
     // Query to count number of comments.
-    $query_comments = $this->connection->select('group_content_field_data', 'gc_fd')
+    $query_comments = $this->connection->select('group_relationship_field_data', 'gc_fd')
       ->fields('gc_fd', ['gid'])
       ->condition('gc_fd.gid', $group->id())
       ->condition('gc_fd.type', $comment_ctypes, 'IN');
@@ -302,7 +302,7 @@ class GroupStatisticsStorage implements GroupStatisticsStorageInterface {
     $group_content_type = "{$group->bundle()}-group_node-{$node_type}";
 
     // Query to count number of files per group content + media fields.
-    $query_files = $this->connection->select('group_content_field_data', 'gc_fd')
+    $query_files = $this->connection->select('group_relationship_field_data', 'gc_fd')
       ->fields('n_field', ["{$field_name}_target_id"])
       ->condition('gc_fd.gid', $group->id())
       ->condition('gc_fd.type', $group_content_type, 'IN');
@@ -366,7 +366,7 @@ class GroupStatisticsStorage implements GroupStatisticsStorageInterface {
 
     foreach ($fields as $field_name) {
       // Query to count number of files per group content + media fields.
-      $query_files = $this->connection->select('group_content_field_data', 'gc_fd')
+      $query_files = $this->connection->select('group_relationship_field_data', 'gc_fd')
         ->fields('p_field', ["{$field_name}_target_id"])
         ->condition('gc_fd.gid', $group->id())
         ->condition('gc_fd.type', $group_content_type, 'IN');
@@ -414,7 +414,7 @@ class GroupStatisticsStorage implements GroupStatisticsStorageInterface {
    */
   public function calculateGroupEventsStatistics(GroupInterface $group) {
     // Query to count number of members.
-    $query_events = $this->connection->select('group_content_field_data', 'gc_fd')
+    $query_events = $this->connection->select('group_relationship_field_data', 'gc_fd')
       ->fields('gc_fd', ['gid'])
       ->condition('nfd.status', NodeInterface::PUBLISHED)
       ->condition('gc_fd.gid', $group->id())

@@ -173,8 +173,6 @@ class FlagHelper {
    *   The group object.
    * @param bool $include_group_content
    *   Whether to search also into group content.
-   * @param array $node_filters
-   *   Filters when querying nodes. See GroupInterface::getContent().
    *
    * @return array
    *   An array with the following structure:
@@ -183,7 +181,7 @@ class FlagHelper {
    *   - content: array of flag_id => value. Only flags that have at least 1
    *   value will be present in the result.
    */
-  public function getFlaggingsCountPerGroup(GroupInterface $group, $include_group_content = FALSE, array $node_filters = []) {
+  public function getFlaggingsCountPerGroup(GroupInterface $group, $include_group_content = FALSE) {
     $count = [
       'group' => [],
       'node' => [],
@@ -194,7 +192,7 @@ class FlagHelper {
 
     // Count group content flags if enabled.
     if ($include_group_content) {
-      foreach ($this->groupsHelper->getGroupNodes($group, $node_filters) as $node) {
+      foreach ($this->groupsHelper->getGroupNodes($group) as $node) {
         foreach ($this->flagCountManager->getEntityFlagCounts($node) as $flag_id => $flag_count) {
           !isset($count['node'][$flag_id]) ?
             $count['node'][$flag_id] = $flag_count : $count['node'][$flag_id] += $flag_count;
@@ -232,7 +230,7 @@ class FlagHelper {
     $query->addField('f', 'id');
     $query->condition('f.flag_id', FlagType::FOLLOW_CONTENT);
     $query->condition('f.uid', $account->id());
-    $query->join('group_content_field_data', 'gc', 'gc.entity_id = f.entity_id');
+    $query->join('group_relationship_field_data', 'gc', 'gc.entity_id = f.entity_id');
     $query->condition('gc.gid', $group->id());
     $query->condition('gc.type', $group->bundle() . '-group_node-%', 'LIKE');
     $results = $query->execute()->fetchAllAssoc('id');
@@ -273,7 +271,7 @@ class FlagHelper {
       $query->condition('f.uid', $member_uids, 'NOT IN');
     }
     if ($flag_type === FlagType::FOLLOW_CONTENT) {
-      $query->join('group_content_field_data', 'gc', 'gc.entity_id = f.entity_id');
+      $query->join('group_relationship_field_data', 'gc', 'gc.entity_id = f.entity_id');
       $query->condition('gc.gid', $group->id());
       $query->condition('gc.type', $group->bundle() . '-group_node-%', 'LIKE');
     }

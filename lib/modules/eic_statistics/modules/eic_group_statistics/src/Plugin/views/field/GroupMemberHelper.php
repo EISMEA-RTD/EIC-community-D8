@@ -2,7 +2,7 @@
 
 namespace Drupal\eic_group_statistics\Plugin\views\field;
 
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\views\ResultRow;
 
 /**
@@ -28,23 +28,23 @@ class GroupMemberHelper {
     $entity = $values->_entity;
     $membership = NULL;
 
-    if ($entity instanceof GroupContentInterface) {
-      /** @var \Drupal\group\Entity\GroupContentInterface $entity */
-      if ($entity->getGroupContentType()->getContentPluginId() == 'group_membership') {
+    if ($entity instanceof GroupRelationshipInterface) {
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
+      if ($entity->getRelationshipType()->getPluginId() == 'group_membership') {
         $membership = $entity;
       }
     }
     else {
       // Depending on the base table of the view, the entity can be something
-      // else than a GroupContent entity, so we need to check the relationships.
-      /** @var \Drupal\group\Entity\GroupContentInterface $relationship_entity */
+      // else than a GroupRelationship entity, so we need to check the relationships.
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface $relationship_entity */
       foreach ($values->_relationship_entities as $relationship_entity) {
-        if (!$relationship_entity instanceof GroupContentInterface) {
+        if (!$relationship_entity instanceof GroupRelationshipInterface) {
           continue;
         }
 
         // We get the first encountered membership.
-        if ($relationship_entity->getGroupContentType()->getContentPluginId() == 'group_membership') {
+        if ($relationship_entity->getRelationshipType()->getPluginId() == 'group_membership') {
           $membership = $relationship_entity;
           break;
         }

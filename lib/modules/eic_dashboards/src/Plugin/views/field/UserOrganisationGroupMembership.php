@@ -45,7 +45,7 @@ class UserOrganisationGroupMembership extends FieldPluginBase {
     $uid = $values->uid;
     $string = '';
 
-    $query = $this->connection->select('group_content_field_data', 'gcfd')
+    $query = $this->connection->select('group_relationship_field_data', 'gcfd')
       ->condition('gcfd.entity_id', $uid)
       ->condition('gcfd.type', 'organisation-group_membership')
       ->range(0, 10);

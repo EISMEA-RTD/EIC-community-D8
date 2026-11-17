@@ -59,7 +59,7 @@ class EICContentHelper implements EICContentHelperInterface {
         return $this->entityTypeManager->getStorage('group_content')->loadByEntity($entity);
       }
 
-      /** @var \Drupal\group\Entity\GroupContentTypeInterface[] $group_content_types */
+      /** @var \Drupal\group\Entity\GroupRelationshipTypeInterface[] $group_content_types */
       $group_content_types = $this->entityTypeManager->getStorage('group_content_type')
         ->loadMultiple();
       if (!$group_content_types) {
@@ -75,7 +75,7 @@ class EICContentHelper implements EICContentHelperInterface {
               $group_content_type->getGroupTypeId() === $group_type_id &&
               (
                 !$filter_group_content_types ||
-                in_array($group_content_type->getContentPluginId(), $filter_group_content_types)
+                in_array($group_content_type->getPluginId(), $filter_group_content_types)
               )
             ) {
               $load_group_content_types[] = $group_content_type->id();
@@ -87,7 +87,7 @@ class EICContentHelper implements EICContentHelperInterface {
         // Gets group content type plugin ids for all group types.
         if (
           !$filter_group_content_types ||
-          in_array($group_content_type->getContentPluginId(), $filter_group_content_types)
+          in_array($group_content_type->getPluginId(), $filter_group_content_types)
         ) {
           $load_group_content_types[] = $group_content_type->id();
         }

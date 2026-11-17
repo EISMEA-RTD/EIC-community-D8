@@ -8,18 +8,6 @@ services:
     class: Drupal\eic_dummy_content\Generator\TaxonomyGenerator
     tags:
       - { name: data_fixtures, priority: -2 }
-  eic_default_content.group_generator:
-    class: Drupal\eic_dummy_content\Generator\GroupGenerator
-    tags:
-      - { name: data_fixtures }
-  eic_default_content.group_type_event_generator:
-    class: Drupal\eic_dummy_content\Generator\GroupTypeEventGenerator
-    tags:
-      - { name: data_fixtures }
-  eic_default_content.organisation_generator:
-    class: Drupal\eic_dummy_content\Generator\OrganisationGenerator
-    tags:
-      - { name: data_fixtures }
   eic_default_content.story_generator:
     class: Drupal\eic_dummy_content\Generator\StoryGenerator
     arguments: [ '@entity_type.manager' ]

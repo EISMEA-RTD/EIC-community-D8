@@ -11,7 +11,6 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\Markup;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
 use Drupal\eic_content\Constants\DefaultContentModerationStates;
 use Drupal\eic_flags\FlagType;
@@ -25,7 +24,6 @@ use Drupal\eic_search\Service\SolrSearchManager;
 use Drupal\flag\FlagServiceInterface;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\GroupMembership;
-use Drupal\oec_group_flex\OECGroupFlexHelper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -62,13 +60,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected $entityTypeManager;
-
-  /**
-   * The OEC group flex helper service.
-   *
-   * @var \Drupal\oec_group_flex\OECGroupFlexHelper
-   */
-  protected $oecGroupFlexHelper;
 
   /**
    * The current user.
@@ -116,8 +107,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
    *   The EIC groups helper service.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
-   * @param \Drupal\oec_group_flex\OECGroupFlexHelper $oec_group_flex_helper
-   *   The OEC group flex helper service.
    * @param \Drupal\Core\Session\AccountProxyInterface $current_user
    *   The current user.
    * @param \Drupal\flag\FlagServiceInterface $flag_service
@@ -134,7 +123,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
     RouteMatchInterface $route_match,
     EICGroupsHelperInterface $eic_groups_helper,
     EntityTypeManagerInterface $entity_type_manager,
-    OECGroupFlexHelper $oec_group_flex_helper,
     AccountProxyInterface $current_user,
     FlagServiceInterface $flag_service,
     GroupStatisticsHelperInterface $group_statistics_helper,
@@ -144,7 +132,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
     $this->routeMatch = $route_match;
     $this->eicGroupsHelper = $eic_groups_helper;
     $this->entityTypeManager = $entity_type_manager;
-    $this->oecGroupFlexHelper = $oec_group_flex_helper;
     $this->currentUser = $current_user;
     $this->flagService = $flag_service;
     $this->groupStatisticsHelper = $group_statistics_helper;
@@ -167,7 +154,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
       $container->get('current_route_match'),
       $container->get('eic_groups.helper'),
       $container->get('entity_type.manager'),
-      $container->get('oec_group_flex.helper'),
       $container->get('current_user'),
       $container->get('flag'),
       $container->get('eic_group_statistics.helper'),
@@ -217,10 +203,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
     $user_operation_links = $this->eicGroupsHelper->getGroupContentOperationLinks($group, ['user'], $cacheable_metadata);
 
     $operation_links = [];
-    // Get login link for anonymous users.
-    if ($login_link = $this->getAnonymousLoginLink($group)) {
-      $operation_links['anonymous_user_link'] = $login_link;
-    }
 
     $this->processLeaveGroupPermission($group, $user_operation_links);
 
@@ -305,14 +287,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
       ];
     }
 
-    if (Settings::get('cordis_project_status', FALSE)) {
-      // Adds stakeholder URL to the project group operation links.
-      $group_operation_links['stakeholder-collection'] = [
-        'title' => $this->t('Manage stakeholders'),
-        'url' => Url::fromRoute('view.project_stakeholders.page_1', ['group' => $group->id()]),
-      ];
-    }
-
     // Adds pending membership requests URL to the group operation links.
     $group_operation_links['edit-membership-requests'] = [
       'title' => $this->t('Membership requests'),
@@ -370,7 +344,7 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
 
     // Load group event statistics.
     $group_events = FALSE;
-    if ($group->getGroupType()->hasContentPlugin('group_node:event')) {
+    if ($group->getGroupType()->hasPlugin('group_node:event')) {
       $group_events = 0;
       $this->solrSearchManager->init(GroupEventSourceType::class, []);
       $this->solrSearchManager->buildGroupQuery($group->id());
@@ -407,44 +381,6 @@ class EICGroupHeaderBlock extends BlockBase implements ContainerFactoryPluginInt
     $cacheable_metadata->applyTo($build);
 
     return $build;
-  }
-
-  /**
-   * Get login link for anonymous users.
-   *
-   * @param \Drupal\group\Entity\GroupInterface $group
-   *   The group entity.
-   *
-   * @return bool|array
-   *   A key-value array containing the following key-value pairs:
-   *   - title: The localized title of the link.
-   *   - url: An instance of \Drupal\Core\Url for the login URL.
-   */
-  private function getAnonymousLoginLink(GroupInterface $group) {
-    $link = [];
-    if ($this->currentUser->isAnonymous()) {
-      if ($joining_methods = $this->oecGroupFlexHelper->getGroupJoiningMethod($group)) {
-        $login_link_options = [
-          'query' => [
-            'destination' => Url::fromRoute('<current>')->toString(),
-          ],
-        ];
-        $link['url'] = Url::fromRoute('eic_user_login.member_access', [], $login_link_options);
-        switch ($joining_methods[0]['plugin_id']) {
-          case 'tu_open_method':
-            $link['title'] = $this->t('Log in to join');
-            break;
-
-          case 'tu_group_membership_request':
-            $link['title'] = $this->t('Log in to request membership');
-            break;
-
-        }
-      }
-    }
-
-    // If no title has been set, that means no available join method.
-    return array_key_exists('title', $link) ? $link : [];
   }
 
   /**

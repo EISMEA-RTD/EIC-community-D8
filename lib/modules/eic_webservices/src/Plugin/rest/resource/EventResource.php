@@ -60,7 +60,6 @@ class EventResource extends GroupResourceBase {
     EventsHelper::setRequiredFieldsDefaultValues($entity);
 
     // Sets default group features.
-    $this->setDefaultGroupFeatures($entity);
 
     return parent::post($entity);
   }

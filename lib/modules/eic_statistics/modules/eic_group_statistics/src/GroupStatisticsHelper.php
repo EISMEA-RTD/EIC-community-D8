@@ -186,7 +186,7 @@ class GroupStatisticsHelper implements GroupStatisticsHelperInterface {
       $results = $query->execute();
 
       if (!empty($results)) {
-        /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+        /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
         $group_content = $this->entityTypeManager->getStorage('group_content')->load(reset($results));
         /** @var \Drupal\node\NodeInterface $node */
         $node = $group_content->getEntity();
@@ -253,7 +253,7 @@ class GroupStatisticsHelper implements GroupStatisticsHelperInterface {
     // We need to query on group_content entities.
     /** @var \Drupal\Core\Database\Query\SelectInterface $query */
     $query = $this->connection->select('comment_field_data', 'cfd');
-    $query->join('group_content_field_data', 'gcfd', 'cfd.entity_id = gcfd.entity_id');
+    $query->join('group_relationship_field_data', 'gcfd', 'cfd.entity_id = gcfd.entity_id');
     $query->condition('gcfd.gid', $group->id())
       ->condition('gcfd.type', $content_plugins, 'IN')
       ->condition('cfd.entity_type', 'node')
@@ -300,7 +300,7 @@ class GroupStatisticsHelper implements GroupStatisticsHelperInterface {
 
       // Get the list of related nodes.
       $node_ids = [];
-      /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+      /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
       foreach ($group_content_storage->loadMultiple($results) as $group_content) {
         $node_ids[] = $group_content->getEntity()->id();
       }

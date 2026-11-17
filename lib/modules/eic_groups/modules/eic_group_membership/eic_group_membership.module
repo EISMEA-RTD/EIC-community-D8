@@ -22,10 +22,9 @@ use Drupal\eic_overviews\GlobalOverviewPages;
 use Drupal\eic_user\UserHelper;
 use Drupal\grequest\Entity\Form\GroupMembershipApproveForm;
 use Drupal\group\Access\GroupAccessResult;
-use Drupal\group\Entity\Form\GroupContentForm;
+use Drupal\group\Entity\Form\GroupRelationshipForm;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\group\GroupMembership;
-use Drupal\oec_group_flex\GroupVisibilityRecordInterface;
 use Drupal\message\Entity\Message;
 
 /**
@@ -39,7 +38,7 @@ function eic_group_membership_entity_operation_alter(
     return;
   }
 
-  if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+  if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
     return;
   }
 
@@ -77,16 +76,6 @@ function eic_group_membership_entity_operation_alter(
 }
 
 /**
- * Implements hook_group_content_info_alter().
- */
-function eic_group_membership_group_content_info_alter(array &$definitions) {
-  if (isset($definitions['group_membership'])) {
-    // Overrides the group_membership handlers.
-    $definitions['group_membership']['handlers']['permission_provider'] = '\Drupal\eic_group_membership\Plugin\GroupMembershipPermissionProvider';
-  }
-}
-
-/**
  * Implements hook_entity_field_access_alter().
  *
  * We need to alter the result of group_entity_field_access().
@@ -111,11 +100,11 @@ function eic_group_membership_entity_field_access_alter(array &$grants, array $c
     return;
   }
 
-  /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
   $group_content = $context['items']->getEntity();
 
   // We only care if the group content entity is a group membership.
-  if ($group_content->getContentPlugin()->getPluginId() != 'group_membership') {
+  if ($group_content->getPlugin()->getPluginId() != 'group_membership') {
     return;
   }
 
@@ -202,18 +191,18 @@ function eic_group_membership_form_alter(
 function _eic_group_membership_handle_group_membership_form(&$form, FormStateInterface $form_state, $form_id) {
   /** @var \Drupal\Core\Entity\EntityForm $form_object */
   $form_object = $form_state->getFormObject();
-  if (!$form_object instanceof GroupContentForm) {
+  if (!$form_object instanceof GroupRelationshipForm) {
     return;
   }
 
-  /** @var \Drupal\group\Entity\GroupContentInterface $entity */
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
   $entity = $form_object->getEntity();
 
-  if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+  if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
     return;
   }
 
-  $group_type = $entity->getContentPlugin()->getGroupTypeId();
+  $group_type = $entity->getPlugin()->getGroupTypeId();
   $owner_role = $group_type . '-' . EICGroupsHelper::GROUP_TYPE_OWNER_ROLE;
 
   switch ($form_id) {
@@ -269,14 +258,14 @@ function _eic_group_membership_handle_group_membership_request_form(&$form, Form
     return;
   }
 
-  /** @var \Drupal\group\Entity\GroupContentInterface $entity */
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
   $entity = $form_object->getEntity();
 
-  if ($entity->getContentPlugin()->getPluginId() !== 'group_membership_request') {
+  if ($entity->getPlugin()->getPluginId() !== 'group_membership_request') {
     return;
   }
 
-  $group_type = $entity->getContentPlugin()->getGroupTypeId();
+  $group_type = $entity->getPlugin()->getGroupTypeId();
   $owner_role = $group_type . '-' . EICGroupsHelper::GROUP_TYPE_OWNER_ROLE;
 
   switch ($form_id) {
@@ -308,7 +297,7 @@ function eic_group_membership_update_membership_role_form_submit(
   array $form,
   FormStateInterface $form_state
 ) {
-  /** @var \Drupal\group\Entity\GroupContentInterface $entity */
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
   $entity = $form_state->getFormObject()->getEntity();
   $current_group_owner = EICGroupsHelper::getGroupOwner($entity->getGroup());
   $specific_user = $entity->getEntity();
@@ -317,7 +306,7 @@ function eic_group_membership_update_membership_role_form_submit(
   $group_owner = EICGroupsHelper::getGroupOwner($entity->getGroup());
 
   $is_new_group_admin = array_filter($new_roles, function (array $role) use ($entity) {
-    return $entity->getContentPlugin()->getGroupTypeId() . '-' . EICGroupsHelper::GROUP_TYPE_ADMINISTRATOR_ROLE
+    return $entity->getPlugin()->getGroupTypeId() . '-' . EICGroupsHelper::GROUP_TYPE_ADMINISTRATOR_ROLE
       === $role['target_id'];
   });
 
@@ -339,7 +328,7 @@ function eic_group_membership_update_membership_role_form_submit(
 
   // Keep the group owner role if we are editing the owner membership.
   if ($entity->getEntity()->id() === $current_group_owner->id()) {
-    $owner_role = $entity->getContentPlugin()->getGroupTypeId() . '-' . EICGroupsHelper::GROUP_TYPE_OWNER_ROLE;
+    $owner_role = $entity->getPlugin()->getGroupTypeId() . '-' . EICGroupsHelper::GROUP_TYPE_OWNER_ROLE;
     $group_roles = $form_state->getValue('group_roles');
     $group_roles[] = [
       'target_id' => $owner_role,
@@ -391,8 +380,8 @@ function eic_group_membership_leave_form_submit(
  * Implements hook_ENTITY_TYPE_delete().
  */
 function eic_group_membership_group_content_delete(EntityInterface $entity) {
-  /** @var \Drupal\group\Entity\GroupContentInterface $entity */
-  if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
+  if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
     return;
   }
 
@@ -408,84 +397,11 @@ function eic_group_membership_group_content_delete(EntityInterface $entity) {
     $flag_service->unflag($flag, $flag_entity, $user);
   }
 
-  $config = \Drupal::config('eic_group_membership.settings');
-  // Setting to unfollow group content nodes when leaving the group is disabled
-  // so we do nothing.
-  if (!$config->get('unfollow_group_content_enqueue_items')) {
-    return;
-  }
-
-  $group_visibility_storage = \Drupal::service('oec_group_flex.group_visibility.storage');
-  $group_visibility = $group_visibility_storage->load($flag_entity->id());
-
-  $exclude_group_visibilities = [
-    'public',
-    'restricted_community_members',
-  ];
-
-  if (UserHelper::isPowerUser($user)) {
-    return;
-  }
-
-  // Creates queue items to unfollow group content nodes via drush command.
-  if (!in_array($group_visibility->getType(), $exclude_group_visibilities)) {
-    $queue = \Drupal::queue('eic_group_membership_unfollow_content');
-    $queue->createItem([
-      'gid' => $flag_entity->id(),
-      'uid' => $user->id(),
-    ]);
-  }
-}
-
-/**
- * Implements hook_group_flex_visibility_save().
- */
-function eic_group_membership_group_flex_visibility_save(
-  GroupInterface $group,
-  GroupVisibilityRecordInterface $old_group_visibility,
-  GroupVisibilityRecordInterface $new_group_visibility
-) {
-  $config = \Drupal::config('eic_group_membership.settings');
-  // Setting to unfollow group content nodes on visibility change is disabled,
-  // so we do nothing.
-  if (!$config->get('unfollow_group_content_enqueue_items')) {
-    return;
-  }
-
-  if ($old_group_visibility->getType() !== $new_group_visibility->getType()) {
-    switch ($new_group_visibility->getType()) {
-      case 'private':
-      case 'custom_restricted':
-        $queue = \Drupal::queue('eic_group_membership_visibility_change_unfollow_content');
-        $queue->createItem([
-          'gid' => $group->id(),
-        ]);
-        break;
-
-      default:
-        break;
-
-    }
-  }
-  else {
-    switch ($new_group_visibility->getType()) {
-      case 'custom_restricted':
-        if (
-          Json::encode($old_group_visibility->getOptions()) !==
-          Json::encode($new_group_visibility->getOptions())
-        ) {
-          $queue = \Drupal::queue('eic_group_membership_visibility_change_unfollow_content');
-          $queue->createItem([
-            'gid' => $group->id(),
-          ]);
-        }
-        break;
-
-      default:
-        break;
-
-    }
-  }
+  // An unfollow-on-leave queueing block stood here. It looked up the group's
+  // oec_group_flex visibility record and queued an unfollow unless the group
+  // was public or community-restricted. Every group is public, so it never
+  // queued anything -- and it was a fourth instance of the same latent fatal,
+  // calling getType() on a load() that returns FALSE when no record exists.
 }
 
 /**
@@ -494,8 +410,8 @@ function eic_group_membership_group_flex_visibility_save(
 function eic_group_membership_group_content_access(EntityInterface $entity, $operation, AccountInterface $account) {
   $access = GroupAccessResult::neutral();
 
-  /** @var \Drupal\group\Entity\GroupContentInterface $entity */
-  if ($entity->getContentPlugin()->getPluginId() !== 'group_membership') {
+  /** @var \Drupal\group\Entity\GroupRelationshipInterface $entity */
+  if ($entity->getPlugin()->getPluginId() !== 'group_membership') {
     return $access;
   }
 
@@ -608,7 +524,7 @@ function eic_group_membership_group_operations_alter(array &$operations, GroupIn
  * Implements hook_ENTITY_TYPE_insert().
  */
 function eic_group_membership_group_content_insert(EntityInterface $entity) {
-  switch ($entity->getContentPlugin()->getPluginId()) {
+  switch ($entity->getPlugin()->getPluginId()) {
     case 'group_membership_request':
       // Get the ID of the user that requested a membership.
       $uid = $entity->getEntity()->id();

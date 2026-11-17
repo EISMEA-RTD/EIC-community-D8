@@ -18,7 +18,7 @@ use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_search\Search\Sources\ActivityStreamSourceType;
 use Drupal\eic_topics\TopicsManager;
 use Drupal\file\Entity\File;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -285,9 +285,9 @@ class ActivityStreamBlock extends BlockBase implements ContainerFactoryPluginInt
 
     $members_ids = $query->execute();
 
-    $members = GroupContent::loadMultiple($members_ids);
+    $members = GroupRelationship::loadMultiple($members_ids);
 
-    return array_map(function (GroupContent $groupContent) {
+    return array_map(function (GroupRelationship $groupContent) {
       $profiles = $this->entityTypeManager->getStorage('profile')->loadByProperties([
         'uid' => $groupContent->getEntity()->id(),
         'type' => 'member',
@@ -306,9 +306,16 @@ class ActivityStreamBlock extends BlockBase implements ContainerFactoryPluginInt
       }
 
       /** @var \Drupal\media\MediaInterface|null $media_picture */
-      $media_picture = $user->get('field_media')->referencedEntities();
+      $media_picture = $user->hasField('field_media') && !$user->get('field_media')->isEmpty()
+        ? $user->get('field_media')->referencedEntities()
+        : [];
+      $image_target = $media_picture
+        && $media_picture[0]->hasField('oe_media_image')
+        && !$media_picture[0]->get('oe_media_image')->isEmpty()
+        ? $media_picture[0]->get('oe_media_image')->target_id
+        : NULL;
       /** @var File|NULL $file */
-      $file = $media_picture ? File::load($media_picture[0]->get('oe_media_image')->target_id) : NULL;
+      $file = $image_target ? File::load($image_target) : NULL;
       /** @var \Drupal\image\Entity\ImageStyle $style */
       $style = $this->entityTypeManager->getStorage('image_style')->load('crop_80x80');
       $file_url = $file ?

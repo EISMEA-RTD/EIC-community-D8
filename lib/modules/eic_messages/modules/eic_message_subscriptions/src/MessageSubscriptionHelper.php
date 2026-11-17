@@ -3,7 +3,7 @@
 namespace Drupal\eic_message_subscriptions;
 
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 
 /**
  * Provides helper methods for message subscriptions.
@@ -42,7 +42,7 @@ class MessageSubscriptionHelper {
         }
 
         // Loads group contents for the commented entity.
-        $group_contents = GroupContent::loadByEntity($commented_entity);
+        $group_contents = GroupRelationship::loadByEntity($commented_entity);
 
         if (empty($group_contents)) {
           break;
@@ -61,7 +61,7 @@ class MessageSubscriptionHelper {
     // If the entity is in the context of a group we need to make sure the
     // group is not in pending or draft state.
     if ($in_group_context && isset($group_content)) {
-      $group_content_plugin_id = $group_content->getContentPlugin()->getPluginId();
+      $group_content_plugin_id = $group_content->getPlugin()->getPluginId();
 
       // Group content plugins other than group_node cannot trigger
       // notifications.

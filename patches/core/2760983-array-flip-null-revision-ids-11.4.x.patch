@@ -1,0 +1,21 @@
+diff --git a/core/lib/Drupal/Core/Entity/ContentEntityStorageBase.php b/core/lib/Drupal/Core/Entity/ContentEntityStorageBase.php
+index 8d9fb58..e9c8559 100644
+--- a/core/lib/Drupal/Core/Entity/ContentEntityStorageBase.php
++++ b/core/lib/Drupal/Core/Entity/ContentEntityStorageBase.php
+@@ -658,6 +658,16 @@ public function loadRevision($revision_id) {
+   public function loadMultipleRevisions(array $revision_ids) {
+     $revisions = [];
+ 
++    // Remove any NULL revision IDs before they reach array_flip(), which only
++    // accepts strings and integers.
++    if (!empty($revision_ids)) {
++      foreach ($revision_ids as $index => $id) {
++        if (is_null($id)) {
++          unset($revision_ids[$index]);
++        }
++      }
++    }
++
+     // Create a new variable which is a prepared version of the
+     // $revision_ids array for later comparison with the revision cache. The
+     // $revision_ids array is reduced as items are loaded from cache, allowing

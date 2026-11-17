@@ -18,7 +18,7 @@ class ResendInvitation extends LinkBase {
    * {@inheritdoc}
    */
   protected function getUrlInfo(ResultRow $row) {
-    /** @var \Drupal\group\Entity\GroupContentInterface $group_content */
+    /** @var \Drupal\group\Entity\GroupRelationshipInterface $group_content */
     $group_content = $this->getEntity($row);
     $invitation_counter = (int) $group_content->get('field_invitation_counter')->value;
     

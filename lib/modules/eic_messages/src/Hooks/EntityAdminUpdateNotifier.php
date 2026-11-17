@@ -10,7 +10,7 @@ use Drupal\eic_content\EICContentHelper;
 use Drupal\eic_messages\Service\MessageBusInterface;
 use Drupal\eic_messages\Util\NotificationMessageTemplates;
 use Drupal\eic_user\UserHelper;
-use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupRelationshipInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -94,7 +94,7 @@ class EntityAdminUpdateNotifier implements ContainerInjectionInterface {
     $group_content = $this->contentHelper->getGroupContentByEntity($entity, [], ["group_node:{$entity->bundle()}"]);
     if (!empty($group_content)) {
       $group_content = reset($group_content);
-      if ($group_content instanceof GroupContentInterface) {
+      if ($group_content instanceof GroupRelationshipInterface) {
         $message['field_group_ref'] = $group_content->getGroup();
       }
     }

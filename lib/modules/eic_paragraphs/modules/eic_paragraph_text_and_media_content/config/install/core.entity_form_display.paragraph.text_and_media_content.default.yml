@@ -67,6 +67,8 @@ content:
         media_right: media_right
         default: 0
       default_view_mode: media_left
+      form_mode_bind: false
+      apply_to_preview: false
     third_party_settings: {  }
     region: content
 hidden:

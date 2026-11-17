@@ -23,7 +23,7 @@ use Drupal\eic_user\UserHelper;
 use Drupal\flag\FlaggingInterface;
 use Drupal\flag\FlagInterface;
 use Drupal\flag\FlagService;
-use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupRelationship;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
@@ -639,7 +639,7 @@ class DiscussionController extends ControllerBase {
   private function hasPermission(int $node_id, string $permission): bool {
     /** @var \Drupal\node\NodeInterface|NULL $node */
     $node = Node::load($node_id);
-    $group_contents = GroupContent::loadByEntity($node);
+    $group_contents = GroupRelationship::loadByEntity($node);
 
     // If we are in group.
     if ($group_contents) {
@@ -674,10 +674,17 @@ class DiscussionController extends ControllerBase {
     $user = $comment->getOwner();
 
     /** @var \Drupal\media\MediaInterface|null $media_picture */
-    $media_picture = $user->get('field_media')->referencedEntities();
+    $media_picture = $user && $user->hasField('field_media') && !$user->get('field_media')->isEmpty()
+      ? $user->get('field_media')->referencedEntities()
+      : [];
+    $image_target = $media_picture
+      && $media_picture[0]->hasField('oe_media_image')
+      && !$media_picture[0]->get('oe_media_image')->isEmpty()
+      ? $media_picture[0]->get('oe_media_image')->target_id
+      : NULL;
     /** @var \Drupal\file\FileInterface|null $file */
-    $file = $media_picture ?
-      $this->entityTypeManager->getStorage('file')->load($media_picture[0]->get('oe_media_image')->target_id) :
+    $file = $image_target ?
+      $this->entityTypeManager->getStorage('file')->load($image_target) :
       NULL;
     /** @var \Drupal\image\ImageStyleInterface $style */
     $style = $this->entityTypeManager->getStorage('image_style')->load('crop_36x36');

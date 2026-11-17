@@ -6,7 +6,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_groups\EICGroupsHelperInterface;
 use Drupal\eic_webservices\Utility\EicWsHelper;
-use Drupal\group\Access\GroupContentCreateEntityAccessCheck as GroupContentCreateEntityAccessCheckBase;
+use Drupal\group\Access\GroupRelationshipCreateEntityAccessCheck as GroupContentCreateEntityAccessCheckBase;
 use Drupal\group\Access\GroupPermissionAccessCheck;
 use Drupal\group\Entity\GroupInterface;
 use Drupal\Core\Access\AccessResult;
