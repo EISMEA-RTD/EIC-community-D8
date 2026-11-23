@@ -11,3 +11,4 @@ dependencies:
   - eic_content:eic_content_wiki_page
   - eic_flags:eic_flags
   - eic_projects:eic_projects
+  - ddc_default_content:ddc_default_content

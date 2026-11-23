@@ -5,6 +5,7 @@ dependencies:
     - core.entity_view_mode.group.teaser
     - group.type.group
   module:
+    - ddc_default_content
     - group
 id: group_related_groups
 label: 'Group - Related groups'
@@ -21,8 +22,9 @@ display:
     position: 0
     display_options:
       access:
-        type: none
-        options: {  }
+        type: perm
+        options:
+          perm: 'view ddc restricted content'
       cache:
         type: tag
         options: {  }

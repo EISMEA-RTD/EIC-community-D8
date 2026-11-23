@@ -45,6 +45,15 @@ class HighlightGroupContentAccessCheck implements AccessInterface {
     }
 
     $account = $account->getAccount();
+
+    // The account has to be able to view the group and the node, as the
+    // permission of the group says nothing about restricted content.
+    $view = $group->access('view', $account, TRUE)
+      ->andIf($node->access('view', $account, TRUE));
+    if (!$view->isAllowed()) {
+      return $view->setCacheMaxAge(0);
+    }
+
     if (!$group->hasPermission('highlight group content', $account)) {
       return AccessResult::forbidden('highlight group content permission is required')
         ->setCacheMaxAge(0);

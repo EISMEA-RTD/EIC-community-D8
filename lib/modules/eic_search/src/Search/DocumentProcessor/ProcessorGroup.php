@@ -109,10 +109,12 @@ class ProcessorGroup extends DocumentProcessor {
     $total_comments = (int) $this->groupStatisticsHelper->loadGroupStatistics($group)->getCommentsCount();
     $total_members = (int) $this->groupStatisticsHelper->loadGroupStatistics($group)->getMembersCount();
 
-    // Count total contents of group.
+    // Count total contents of group. This is a value of the index, not of a
+    // viewer, so that it is a system search: the restricted-access filter
+    // must not make it depend on the account that triggers indexing.
     $this->solrSearchManager->init(GlobalSourceType::class, []);
     $this->solrSearchManager->buildGroupQuery($group_id);
-    $results = $this->solrSearchManager->search();
+    $results = $this->solrSearchManager->search(TRUE);
     $results = json_decode($results, TRUE);
     $total_contents = !empty($results) ? (int) $results['response']['numFound'] : 0;
 

@@ -309,9 +309,8 @@ class UserHelper {
    *   TRUE if profile is completed, FALSE otherwise.
    */
   public function isUserProfileCompleted(UserInterface $account) {
-    // Make sure the user has a member profile entity.
-    $this->ensureUserMemberProfile($account);
-
+    // This only checks. The member profile is created when the membership
+    // request of the account is approved (ddc_membership), not here.
     /** @var \Drupal\profile\Entity\ProfileInterface $profile */
     if (!$profile = $this->getUserMemberProfile($account)) {
       return FALSE;
@@ -337,10 +336,13 @@ class UserHelper {
   public function getMemberProfileCompletionCount(int $uid = NULL): int {
     $query = $this->connection->select('profile', 'p');
 
-    // Join profile fields.
-    $query->innerJoin('profile__field_vocab_topic_expertise', 'pvte', 'p.profile_id = pvte.entity_id');
-    $query->innerJoin('profile__field_vocab_topic_interest', 'pvti', 'p.profile_id = pvti.entity_id');
-    $query->innerJoin('profile__field_location_address', 'pla', 'p.profile_id = pla.entity_id');
+    // Join the required profile fields: the first and last name, which are
+    // the fields of the member profile form (the application fields, and the
+    // topics and location that were required before, are gone or hidden).
+    $query->innerJoin('profile__field_first_name', 'pfn', 'p.profile_id = pfn.entity_id');
+    $query->innerJoin('profile__field_last_name', 'pln', 'p.profile_id = pln.entity_id');
+    $query->condition('pfn.field_first_name_value', '', '<>');
+    $query->condition('pln.field_last_name_value', '', '<>');
 
     // Join users table to ensure only active users.
     $query->innerJoin('users_field_data', 'u', 'p.uid = u.uid');

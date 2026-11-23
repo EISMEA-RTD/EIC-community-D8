@@ -49,6 +49,13 @@ final class SmedUserStatuses {
   const USER_DRAFT = 'user_draft';
 
   /**
+   * User rejected.
+   *
+   * @var string
+   */
+  const USER_REJECTED = 'user_rejected';
+
+  /**
    * User approved complete.
    *
    * @var string
@@ -96,6 +103,7 @@ final class SmedUserStatuses {
       self::USER_APPROVED_INCOMPLETE => t('User approved incomplete', [], ['context' => 'eic_user_login']),
       self::USER_DRAFT => t('User draft', [], ['context' => 'eic_user_login']),
       self::USER_PENDING => t('User pending', [], ['context' => 'eic_user_login']),
+      self::USER_REJECTED => t('User rejected', [], ['context' => 'eic_user_login']),
       self::USER_INVITED => t('User invited', [], ['context' => 'eic_user_login']),
       self::USER_NOT_BOOTSTRAPPED => t('User not boostrapped', [], ['context' => 'eic_user_login']),
       self::USER_BLOCKED => t('User blocked', [], ['context' => 'eic_user_login']),

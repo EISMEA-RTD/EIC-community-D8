@@ -28,6 +28,8 @@ eic_groups.discussion_flag_comment:
     _controller: '\Drupal\eic_groups\Controller\DiscussionController::flagComment'
   requirements:
     _permission: 'access content'
+    # The type is the name of a method of the flag service: flag or unflag.
+    type: 'flag|unflag'
 
 eic_groups.discussion_update_comment:
   path: '/api/discussion/{discussion_id}/edit/{comment_id}'
@@ -94,6 +96,8 @@ eic_groups.group.like_content:
     _title: 'Like group content'
   requirements:
     _like_group_content: 'TRUE'
+    # The action is the name of a method of the flag service: flag or unflag.
+    action: 'flag|unflag'
     node: \d+
     group: \d+
 

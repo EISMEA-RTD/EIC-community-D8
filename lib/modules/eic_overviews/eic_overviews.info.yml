@@ -7,4 +7,5 @@ php: 7.3
 dependencies:
   - drupal:text
   - block_field:block_field
+  - ddc_default_content:ddc_default_content
 configure: entity.overview_page.settings

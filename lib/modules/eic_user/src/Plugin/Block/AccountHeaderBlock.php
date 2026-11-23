@@ -108,7 +108,9 @@ class AccountHeaderBlock extends BlockBase implements ContainerFactoryPluginInte
         }
       }
 
-      $url = Url::fromRoute('user.login');
+      // Visitors sign in through EU Login: the Drupal login form has moved
+      // away from the default path and is not offered in the header.
+      $url = Url::fromRoute('cas.login');
       if ($destination) {
         $url->setOption('query', ['destination' => $destination]);
       }

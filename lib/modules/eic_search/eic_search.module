@@ -173,15 +173,27 @@ function eic_search_search_api_solr_query_alter(SolrQueryInterface $solarium_que
 /**
  * Implements hook_ENTITY_TYPE_access() for group entities.
  *
- * Blocks anonymous access to research institution groups.
+ * Keeps the research institution groups from every account that is not
+ * trusted, anonymous visitors and authenticated accounts without the
+ * permission to view restricted content alike, for every operation: view,
+ * update, delete, the revision operations and any custom one. The group roles
+ * are not asked: a role of the group that grants 'view group' to its outsiders,
+ * or the edit permission that the owner of a group has, cannot open the
+ * research institutions to an applicant.
+ *
+ * The result of a trusted account is not an opinion but depends on the
+ * permissions as well, so that it declares the same cache contexts.
  */
 function eic_search_group_access(GroupInterface $group, $op, AccountInterface $account) {
-  if ($group->bundle() === 'research_institution' && $op === 'view') {
-    if ($account->isAnonymous()) {
-      return AccessResult::forbidden('Authentication required.')
-        ->addCacheableDependency($group)
-        ->cachePerUser();
-    }
+  /** @var \Drupal\ddc_default_content\RestrictedContentPolicy $policy */
+  $policy = \Drupal::service('ddc_default_content.restricted_content');
+  if ($policy->isRestrictedEntity($group)) {
+    $result = $policy->isTrusted($account)
+      ? AccessResult::neutral()
+      : AccessResult::forbidden('Restricted content.');
+    return $result
+      ->addCacheableDependency($group)
+      ->addCacheContexts(['user.permissions', 'user.roles:anonymous']);
   }
   return AccessResult::neutral();
 }

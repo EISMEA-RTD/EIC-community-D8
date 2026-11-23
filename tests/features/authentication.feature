@@ -3,12 +3,12 @@ Feature: User authentication
   As a product owner
   I want to make sure users with various roles can only access pages they are authorized to
 
-  Scenario: Anonymous user can see the user login page
+  # The login page is the staff login: "user" leads to /staff-login, and the
+  # default Drupal login and registration paths are switched off.
+  Scenario: Anonymous user can see the staff login page
     Given I am not logged in
     When I visit "user"
-    Then I should see the text "Log in"
-    And I should see the text "Create new account"
-    And I should see the text "Reset your password"
+    Then the url should match "/staff-login"
     And I should see the text "Username"
     And I should see the text "Password"
     But I should not see the text "Log out"
@@ -20,10 +20,27 @@ Feature: User authentication
     Then I visit "<path>"
 
     Examples:
+      | path                  |
+      | staff-login           |
+      | staff-login/password  |
+      | user/register         |
+
+  Scenario Outline: The default Drupal login paths are switched off
+    Given I am not logged in
+    When I go to "<path>"
+    Then the response status code should be 404
+
+    Examples:
       | path          |
       | user/login    |
       | user/password |
-      | user/register |
+
+  # The search page is off. It is not a 404 any more (the address belongs to an
+  # overview page that nobody may open): what counts is that it is closed.
+  Scenario: The search page is closed
+    Given I am not logged in
+    When I go to "search"
+    Then I should get an access denied error
 
   Scenario Outline: Anonymous user cannot access restricted pages
     Given I am not logged in

@@ -76,4 +76,13 @@ class UserInvitesListSourceType extends SourceType {
     return 'user-invitee-list-' . parent::getUniqueId();
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * The member directory is for members.
+   */
+  public function requiresRestrictedAccess(): bool {
+    return TRUE;
+  }
+
 }

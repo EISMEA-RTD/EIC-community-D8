@@ -11,7 +11,7 @@ eic_search.global_search:
     _title: 'Search'
     _controller: '\Drupal\eic_search\Controller\SearchController::global'
   requirements:
-    _permission: 'access content'
+    _permission: 'view ddc restricted content'
 eic_search.groups:
   path: '/groups'
   defaults:
@@ -32,18 +32,18 @@ eic_search.people:
     _title: 'People'
     _controller: '\Drupal\eic_search\Controller\SearchController::people'
   requirements:
-    _permission: 'access content'
+    _permission: 'view ddc restricted content'
 eic_search.research_institutions:
   path: '/data-explorer/institutions-explorer'
   defaults:
     _title: 'Institutions explorer'
     _controller: '\Drupal\eic_search\Controller\SearchController::researchInstitutions'
   requirements:
-    _role: 'authenticated'
+    _permission: 'view ddc restricted content'
 eic_search.resources:
   path: '/analyses-reports/resources'
   defaults:
     _title: 'Resources'
     _controller: '\Drupal\eic_search\Controller\SearchController::resources'
   requirements:
-    _role: 'authenticated'
+    _permission: 'view ddc restricted content'

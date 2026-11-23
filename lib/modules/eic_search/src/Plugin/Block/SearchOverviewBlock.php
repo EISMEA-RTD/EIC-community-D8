@@ -2,6 +2,7 @@
 
 namespace Drupal\eic_search\Plugin\Block;
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\CssCommand;
 use Drupal\Core\Block\Annotation\Block;
@@ -13,6 +14,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
+use Drupal\ddc_default_content\RestrictedContentPolicy;
 use Drupal\eic_groups\EICGroupsHelper;
 use Drupal\eic_groups\GroupsModerationHelper;
 use Drupal\eic_search\Collector\SourcesCollector;
@@ -64,6 +66,13 @@ class SearchOverviewBlock extends BlockBase implements ContainerFactoryPluginInt
   protected $routeMatch;
 
   /**
+   * The policy that tells who may see restricted content.
+   *
+   * @var \Drupal\ddc_default_content\RestrictedContentPolicy
+   */
+  protected $restrictedContent;
+
+  /**
    * @param array $configuration
    * @param string $plugin_id
    * @param mixed $plugin_definition
@@ -71,6 +80,7 @@ class SearchOverviewBlock extends BlockBase implements ContainerFactoryPluginInt
    * @param EICGroupsHelper $groups_helper
    * @param RequestStack $request_stack
    * @param RouteMatchInterface $route_match
+   * @param \Drupal\ddc_default_content\RestrictedContentPolicy $restricted_content
    */
   public function __construct(
     array $configuration,
@@ -79,13 +89,15 @@ class SearchOverviewBlock extends BlockBase implements ContainerFactoryPluginInt
     SourcesCollector $sources_collector,
     EICGroupsHelper $groups_helper,
     RequestStack $request_stack,
-    RouteMatchInterface $route_match
+    RouteMatchInterface $route_match,
+    RestrictedContentPolicy $restricted_content,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->sourcesCollector = $sources_collector;
     $this->groupsHelper = $groups_helper;
     $this->requestStack = $request_stack;
     $this->routeMatch = $route_match;
+    $this->restrictedContent = $restricted_content;
   }
 
   /**
@@ -109,8 +121,29 @@ class SearchOverviewBlock extends BlockBase implements ContainerFactoryPluginInt
       $container->get('eic_search.sources_collector'),
       $container->get('eic_groups.helper'),
       $container->get('request_stack'),
-      $container->get('current_route_match')
+      $container->get('current_route_match'),
+      $container->get('ddc_default_content.restricted_content')
     );
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * A block configured with a source that serves restricted data (the
+   * Resources Library, the research institutions, the member directory)
+   * renders nothing for an account that is not trusted, wherever it is placed.
+   * The other sources are filtered per item by the Solr search API.
+   */
+  protected function blockAccess(AccountInterface $account) {
+    $source = $this->getCurrentSource((string) ($this->configuration['source_type'] ?? ''));
+    if (!$source instanceof SourceTypeInterface || !$source->requiresRestrictedAccess()) {
+      return AccessResult::allowed();
+    }
+
+    return ($this->restrictedContent->isTrusted($account)
+      ? AccessResult::allowed()
+      : AccessResult::forbidden('Restricted content.'))
+      ->addCacheContexts(['user.permissions', 'user.roles:anonymous']);
   }
 
   /**

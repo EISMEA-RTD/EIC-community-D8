@@ -4,7 +4,9 @@ namespace Drupal\eic_search\Service;
 
 use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\ddc_default_content\RestrictedContentPolicy;
 use Drupal\eic_groups\EICGroupsHelper;
+use Drupal\eic_search\Exception\InvalidSearchParameterException;
 use Drupal\eic_search\Collector\SourcesCollector;
 use Drupal\eic_search\Plugin\search_api\processor\GroupAccessContent;
 use Drupal\eic_search\Search\DocumentProcessor\DocumentProcessorInterface;
@@ -19,12 +21,14 @@ use Drupal\eic_search\Search\Sources\UserInvitesListSourceType;
 use Drupal\eic_search\Search\Sources\UserListSourceType;
 use Drupal\eic_search\Search\Sources\UserRecommendSourceType;
 use Drupal\eic_search\Search\Sources\UserTaggingCommentsSourceType;
+use Drupal\eic_search\SearchHelper;
 use Drupal\eic_topics\Constants\Topics;
 use Drupal\eic_user\UserHelper;
 use Drupal\group\Entity\Group;
 use Drupal\group\GroupMembership;
 use Drupal\group\GroupMembershipLoaderInterface;
 use Drupal\search_api\Entity\Index;
+use Drupal\search_api\SearchApiException;
 use Drupal\search_api_solr\SolrConnectorInterface;
 use Drupal\taxonomy\Entity\Term;
 use Drupal\user\Entity\User;
@@ -33,6 +37,18 @@ use Solarium\Component\ComponentAwareQueryInterface;
 use Solarium\QueryType\Select\Query\Query;
 
 class SolrSearchManager {
+
+  /**
+   * The furthest position in a result list that a request may reach.
+   *
+   * A request reaches the position page * offset: the page ends there, and a
+   * "load more" list is that long (it loads everything up to the page). The
+   * overview blocks send at most 100 results per page (the page size selector)
+   * or a load more batch of 20, so that this leaves room for lists of 50 times
+   * the biggest page and for 250 batches of "load more"; a request beyond it is
+   * not one of the blocks.
+   */
+  const MAX_RESULT_WINDOW = 5000;
 
   /**
    * @var AccountProxyInterface
@@ -53,6 +69,11 @@ class SolrSearchManager {
    * @var \Drupal\group\GroupMembershipLoaderInterface
    */
   private GroupMembershipLoaderInterface $membershipLoader;
+
+  /**
+   * @var \Drupal\ddc_default_content\RestrictedContentPolicy
+   */
+  private RestrictedContentPolicy $restrictedContentPolicy;
 
   /**
    * @var \Drupal\eic_search\Search\Sources\SourceTypeInterface|null
@@ -113,17 +134,20 @@ class SolrSearchManager {
    * @param \Drupal\eic_search\Collector\SourcesCollector $sources_collector
    * @param \Drupal\Core\Entity\EntityTypeManager $em
    * @param \Drupal\group\GroupMembershipLoaderInterface $membership_loader
+   * @param \Drupal\ddc_default_content\RestrictedContentPolicy $restricted_content_policy
    */
   public function __construct(
     AccountProxyInterface $current_user,
     SourcesCollector $sources_collector,
     EntityTypeManager $em,
-    GroupMembershipLoaderInterface $membership_loader
+    GroupMembershipLoaderInterface $membership_loader,
+    RestrictedContentPolicy $restricted_content_policy,
   ) {
     $this->currentUser = $current_user;
     $this->sourcesCollector = $sources_collector;
     $this->em = $em;
     $this->membershipLoader = $membership_loader;
+    $this->restrictedContentPolicy = $restricted_content_policy;
   }
 
   /**
@@ -206,7 +230,8 @@ class SolrSearchManager {
       return;
     }
 
-    $search_query_value = $search_value ? "\"$search_value\"" : '*';
+    // The text is one phrase, so that no Solr syntax in it is parsed.
+    $search_query_value = $search_value ? $this->solrQuery->getHelper()->escapePhrase($search_value) : '*';
 
     $query_fields = [];
 
@@ -238,7 +263,7 @@ class SolrSearchManager {
    * @param string|null $sort_value
    */
   public function buildSortFacets(?array $facets_value, ?string $sort_value) {
-    $this->facets = $facets_value;
+    $this->facets = $this->validateFacetsValue($facets_value ?? []);
     $this->interests = [];
     $sorts = [];
 
@@ -246,31 +271,25 @@ class SolrSearchManager {
       $this->interests = $this->facets['interests'];
     }
 
-    if ($sort_value) {
-      $sorts = explode('__', $sort_value);
+    // 'any' is the "no sort" option of the client.
+    if ($sort_value && $sort_value !== 'any') {
+      $sorts = $this->validateSort($sort_value);
 
-      //Normally sort key have this structure 'FIELD__ASC' but add double check
-      if (2 === count($sorts)) {
-        // Check if sort needs a group injection before sending to solr.
-        $sort_fields_group_context = [
-          DocumentProcessorInterface::SOLR_MOST_ACTIVE_ID_GROUP,
-          DocumentProcessorInterface::SOLR_GROUP_ROLES,
-        ];
+      // Check if sort needs a group injection before sending to solr.
+      $sort_fields_group_context = [
+        DocumentProcessorInterface::SOLR_MOST_ACTIVE_ID_GROUP,
+        DocumentProcessorInterface::SOLR_GROUP_ROLES,
+      ];
 
-        if (in_array($sorts[0], $sort_fields_group_context)) {
-          $sorts[0] = $sorts[0] . $this->currentGroup;
-        }
-        $this->solrQuery->addSort($sorts[0], $sorts[1]);
-      }
+      $sort_field = in_array($sorts[0], $sort_fields_group_context) ?
+        $sorts[0] . $this->currentGroup :
+        $sorts[0];
+      $this->solrQuery->addSort($sort_field, $sorts[1]);
     }
 
-    if (
-      NULL !== $sorts &&
-      array_key_exists(0, $sorts) &&
-      $this->source->getAvailableSortOptions()[$sorts[0]] &&
-      array_key_exists(SourceTypeInterface::SECOND_SORT_KEY, $this->source->getAvailableSortOptions()[$sorts[0]])
-    ) {
-      $second_sorts = $this->source->getAvailableSortOptions()[$sorts[0]][SourceTypeInterface::SECOND_SORT_KEY];
+    $sort_options = $sorts ? ($this->source->getAvailableSortOptions()[$sorts[0]] ?? []) : [];
+    if (array_key_exists(SourceTypeInterface::SECOND_SORT_KEY, $sort_options)) {
+      $second_sorts = $sort_options[SourceTypeInterface::SECOND_SORT_KEY];
 
       foreach ($second_sorts as $second_sort) {
         $this->solrQuery->addSort($second_sort['id'], $second_sort['direction']);
@@ -310,7 +329,7 @@ class SolrSearchManager {
         if ($filtered) {
           $real_field = $exclude_facets[$key];
           foreach (array_keys($filtered) as $val) {
-            $facets_query .= ' AND -' . $real_field . ':"' . $val . '"';
+            $facets_query .= ' AND -' . $real_field . ':' . $this->solrQuery->getHelper()->escapePhrase((string) $val);
           }
         }
         continue;
@@ -323,8 +342,9 @@ class SolrSearchManager {
       $values = array_keys($filtered_value);
 
       if ($filtered_value) {
+        // Each value is one phrase, so that no Solr syntax in it is parsed.
         array_walk($values, function (&$value) {
-          $value = "\"$value\"";
+          $value = $this->solrQuery->getHelper()->escapePhrase((string) $value);
         });
 
         $condition_operator = in_array($key, $this->source->getFacetsUsingOrCondition()) ? 'OR' : 'AND';
@@ -353,10 +373,12 @@ class SolrSearchManager {
    * @param string $end_date
    */
   public function buildDateQuery(string $from_date = '*', string $end_date = '*') {
+    $from_date = $this->validateBound('from_date', $from_date, TRUE);
+    $end_date = $this->validateBound('end_date', $end_date, TRUE);
     $filter_registration = FALSE;
 
     if (array_key_exists('filter_registration', $this->facets)) {
-      $filter_registration = $this->facets['filter_registration']['open_registration'];
+      $filter_registration = $this->facets['filter_registration']['open_registration'] ?? FALSE;
     }
 
     // If source supports date filter and query has a from or to date.
@@ -415,6 +437,9 @@ class SolrSearchManager {
    *   The upper bound, or "*" when unset.
    */
   public function buildRangeQuery(string $range_from = '*', string $range_to = '*') {
+    $range_from = $this->validateBound('year_from', $range_from, FALSE);
+    $range_to = $this->validateBound('year_to', $range_to, FALSE);
+
     if (!$this->source instanceof SourceTypeInterface) {
       return;
     }
@@ -449,6 +474,15 @@ class SolrSearchManager {
   public function buildFacets(?array $facets_fields) {
     $facets_fields = $facets_fields ?? [];
 
+    // facet.field takes field names, so that only the declared facets of the
+    // source may be asked for.
+    $declared = $this->getDeclaredFacetKeys();
+    foreach ($facets_fields as $facet) {
+      if (!is_string($facet) || !in_array($facet, $declared, TRUE)) {
+        throw new InvalidSearchParameterException('facets_options');
+      }
+    }
+
     // Remove virtual exclude keys and range-facet keys - Solr should not be
     // asked to build terms facets on them.
     $exclude_keys = $this->source ? array_merge(
@@ -476,6 +510,11 @@ class SolrSearchManager {
   public function buildGroupQuery(?string $current_group) {
     if (!$current_group) {
       return;
+    }
+
+    // The id is put into field names and queries.
+    if (!ctype_digit($current_group)) {
+      throw new InvalidSearchParameterException('current_group');
     }
 
     $this->currentGroup = $current_group;
@@ -528,9 +567,26 @@ class SolrSearchManager {
    * Set the current start and offset.
    *
    * @param int $page
+   *   The page, counted from 1.
    * @param int $offset
+   *   The number of results per page (or per "load more" batch).
+   *
+   * @throws \Drupal\eic_search\Exception\InvalidSearchParameterException
+   *   When the page is below 1 or the request reaches beyond
+   *   self::MAX_RESULT_WINDOW.
    */
   public function buildQueryPager(int $page, int $offset) {
+    if ($page < 1) {
+      throw new InvalidSearchParameterException('page');
+    }
+    if ($offset < 0 || $offset > self::MAX_RESULT_WINDOW) {
+      throw new InvalidSearchParameterException('offset');
+    }
+    // Divided, not multiplied: page * offset overflows for a page of PHP_INT_MAX.
+    if ($offset > 0 && $page > intdiv(self::MAX_RESULT_WINDOW, $offset)) {
+      throw new InvalidSearchParameterException('page');
+    }
+
     $this->solrQuery->setRows($offset);
 
     //Default value will be to work like pagination.
@@ -545,13 +601,20 @@ class SolrSearchManager {
   }
 
   /**
+   * @param bool $system_query
+   *   TRUE for an internal query that computes a value for the index, such as
+   *   the activity score of a group (ProcessorGroup), which must not depend on
+   *   the account that happens to trigger indexing: the restricted-access
+   *   filter is not applied. Server-side code only; never derive it from
+   *   request input. SolrSearchController never sets it.
+   *
    * @return string
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    * @throws \Drupal\search_api\SearchApiException
    * @throws \Drupal\search_api_solr\SearchApiSolrException
    */
-  public function search() {
+  public function search(bool $system_query = FALSE) {
     $this->solrQuery->addParam('json.nl', 'arrarr');
     $this->solrQuery->addParam('facet.mincount', 1);
     $this->solrQuery->addParam('facet', 'on');
@@ -599,7 +662,46 @@ class SolrSearchManager {
         ->preprocessSolrSearchQuery($this->solrQuery);
     }
 
-    return $this->connector->search($this->solrQuery)->getBody();
+    if (!$system_query) {
+      $this->applyRestrictedContentFilter();
+    }
+
+    $response = $this->connector->search($this->solrQuery);
+    $body = $response->getBody();
+
+    // Solr answers some errors with the error in the body; the error names the
+    // query and the fields of the index, so that it is thrown for the caller
+    // to log, never returned as a result.
+    $data = json_decode($body, TRUE);
+    if ($response->getStatusCode() >= 400 || !is_array($data) || isset($data['error'])) {
+      throw new SearchApiException(sprintf('Solr answered the search with HTTP %d: %s', $response->getStatusCode(), $body));
+    }
+
+    return $body;
+  }
+
+  /**
+   * Keeps restricted items out of the search of an untrusted account.
+   *
+   * This query is raw Solarium, which no Search API processor sees, so that
+   * the restricted-access processor is applied here, for every source, group
+   * admin or not. Without the processor on the index nothing would filter the
+   * search, so that it is refused for an untrusted account.
+   *
+   * @throws \Drupal\search_api\SearchApiException
+   *   When the index lacks the processor and the account is not trusted.
+   */
+  private function applyRestrictedContentFilter(): void {
+    if ($this->index->isValidProcessor('ddc_restricted_access')) {
+      /** @var \Drupal\ddc_default_content\Plugin\search_api\processor\RestrictedAccess $processor */
+      $processor = $this->index->getProcessor('ddc_restricted_access');
+      $processor->preprocessSolrSearchQuery($this->solrQuery);
+      return;
+    }
+
+    if (!$this->restrictedContentPolicy->isTrusted($this->currentUser)) {
+      throw new SearchApiException('The index has no ddc_restricted_access processor, so that a search for an untrusted account is refused.');
+    }
   }
 
   /**
@@ -938,6 +1040,106 @@ class SolrSearchManager {
     $this->rawFieldQuery .= empty($this->rawFieldQuery) ?
       "$query" :
       " AND $query";
+  }
+
+  /**
+   * Returns the facet keys that the current source accepts.
+   *
+   * These are its declared facets, exclude facets and range facets.
+   */
+  private function getDeclaredFacetKeys(): array {
+    if (!$this->source instanceof SourceTypeInterface) {
+      return [];
+    }
+
+    return array_map('strval', array_merge(
+      array_keys($this->source->getAvailableFacets()),
+      array_keys($this->source->getExcludeFacets()),
+      array_keys($this->source->getRangeFacets())
+    ));
+  }
+
+  /**
+   * Checks the facet values of a request.
+   *
+   * The keys are concatenated into the fq as field names, so that only the
+   * declared facets of the source are accepted, plus the keys of the filter
+   * links of the site (SearchHelper::BEAUTIFIED_QUERY_PARAMS) and the special
+   * keys 'interests' and 'filter_registration' that the client sends and the
+   * search reads as flags. Each value must be a list of value => selected.
+   *
+   * @throws \Drupal\eic_search\Exception\InvalidSearchParameterException
+   */
+  private function validateFacetsValue(array $facets_value): array {
+    $accepted = array_merge(
+      $this->getDeclaredFacetKeys(),
+      array_keys(SearchHelper::BEAUTIFIED_QUERY_PARAMS),
+      ['interests', 'filter_registration']
+    );
+
+    foreach ($facets_value as $key => $values) {
+      if (!in_array((string) $key, $accepted, TRUE) || !is_array($values)) {
+        throw new InvalidSearchParameterException('facets_value');
+      }
+      foreach ($values as $selected) {
+        if (!is_scalar($selected) && $selected !== NULL) {
+          throw new InvalidSearchParameterException('facets_value');
+        }
+      }
+    }
+
+    return $facets_value;
+  }
+
+  /**
+   * Checks a sort of a request and returns it as [field, direction].
+   *
+   * The field is put into the sort parameter, so that only the declared sort
+   * fields of the source and its default sort field are accepted, with an
+   * ASC or DESC direction.
+   *
+   * @throws \Drupal\eic_search\Exception\InvalidSearchParameterException
+   */
+  private function validateSort(string $sort_value): array {
+    $sorts = explode('__', $sort_value);
+    if (count($sorts) !== 2 || !in_array(strtoupper($sorts[1]), ['ASC', 'DESC'], TRUE)) {
+      throw new InvalidSearchParameterException('sort_value');
+    }
+
+    $fields = array_map('strval', array_keys($this->source->getAvailableSortOptions()));
+    $default_sort = $this->source->getDefaultSort();
+    if (!empty($default_sort[0])) {
+      $fields[] = $default_sort[0];
+      // Inside a group the client sends the group variant of the default
+      // "most active" sort (SearchOverviewBlock).
+      if ($default_sort[0] === DocumentProcessorInterface::SOLR_MOST_ACTIVE_ID) {
+        $fields[] = DocumentProcessorInterface::SOLR_MOST_ACTIVE_ID_GROUP;
+      }
+    }
+    if (!in_array($sorts[0], $fields, TRUE)) {
+      throw new InvalidSearchParameterException('sort_value');
+    }
+
+    return [$sorts[0], strtoupper($sorts[1])];
+  }
+
+  /**
+   * Checks a bound of a date or numeric range of a request.
+   *
+   * A bound is '*' (unbounded), empty (not set) or a number of seconds or
+   * years; a timestamp with a fraction, as the client may send, is truncated.
+   *
+   * @throws \Drupal\eic_search\Exception\InvalidSearchParameterException
+   */
+  private function validateBound(string $parameter, string $value, bool $allow_fraction): string {
+    if ($value === '*' || $value === '' || ctype_digit($value)) {
+      return $value;
+    }
+    if ($allow_fraction && preg_match('/^\d+\.\d+$/', $value)) {
+      return (string) (int) $value;
+    }
+
+    throw new InvalidSearchParameterException($parameter);
   }
 
   /**

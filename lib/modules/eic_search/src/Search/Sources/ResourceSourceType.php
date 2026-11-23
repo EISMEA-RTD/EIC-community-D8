@@ -147,7 +147,7 @@ final class ResourceSourceType extends SourceType {
   /**
    * {@inheritdoc}
    */
-  public function requiresAuthentication(): bool {
+  public function requiresRestrictedAccess(): bool {
     return TRUE;
   }
 

@@ -121,4 +121,13 @@ class UserListSourceType extends SourceType {
     return 'user-list-' . parent::getUniqueId();
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * The member directory is for members.
+   */
+  public function requiresRestrictedAccess(): bool {
+    return TRUE;
+  }
+
 }

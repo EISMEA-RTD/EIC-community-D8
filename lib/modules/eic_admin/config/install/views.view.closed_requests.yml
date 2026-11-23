@@ -16,6 +16,7 @@ dependencies:
   module:
     - comment
     - datetime
+    - eic_flags
     - flag
     - group
     - node
@@ -37,8 +38,9 @@ display:
     position: 0
     display_options:
       access:
-        type: none
-        options: {  }
+        type: perm
+        options:
+          perm: 'manage archival deletion requests'
       cache:
         type: tag
         options: {  }

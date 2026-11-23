@@ -4,7 +4,6 @@ namespace Drupal\eic_statistics\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\eic_statistics\StatisticsHelper;
-use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -48,20 +47,16 @@ class EntityStatisticsController extends ControllerBase {
       throw new NotFoundHttpException();
     }
 
-    $ids = $this->entityTypeManager()->getStorage('node')
-      ->getQuery()
-      ->accessCheck(FALSE)
-      ->condition('type', $request->query->get('bundle'))
-      ->condition('nid', (int) $request->query->get('entityId'))
-      ->range(0, 1)
-      ->execute();
-
-    if (empty($ids)) {
-      return new JsonResponse([]);
-    }
-
-    $node = Node::load(reset($ids));
-    if (!$node instanceof NodeInterface) {
+    // A node that does not exist, one of another bundle and one that the caller
+    // may not view get the same answer, so that the endpoint is no way to find
+    // out which restricted content (resources, for one) exists.
+    $node = $this->entityTypeManager()->getStorage('node')
+      ->load((int) $request->query->get('entityId'));
+    if (
+      !$node instanceof NodeInterface
+      || $node->bundle() !== $request->query->get('bundle')
+      || !$node->access('view')
+    ) {
       return new JsonResponse([]);
     }
 

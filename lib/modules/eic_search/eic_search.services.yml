@@ -245,4 +245,8 @@ services:
       - [ setStateCache, [ '@?state' ] ]
   eic_search.solr_search_manager:
     class: Drupal\eic_search\Service\SolrSearchManager
-    arguments: ['@current_user', '@eic_search.sources_collector', '@entity_type.manager', '@group.membership_loader']
+    arguments: ['@current_user', '@eic_search.sources_collector', '@entity_type.manager', '@group.membership_loader', '@ddc_default_content.restricted_content']
+  eic_search.global_search_route_subscriber:
+    class: Drupal\eic_search\Routing\GlobalSearchRouteSubscriber
+    tags:
+      - { name: event_subscriber }

@@ -5,7 +5,6 @@ namespace Drupal\eic_user_login\EventSubscriber;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\cas\Event\CasPreLoginEvent;
 use Drupal\cas\Event\CasPreRegisterEvent;
-use Drupal\cas\Event\CasPreUserLoadEvent;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\eic_user_login\Constants\SmedUserStatuses;
@@ -73,43 +72,9 @@ class CasEventSubscriber implements EventSubscriberInterface {
     // reacts to them by fetching logger.factory out of a container that is
     // still being compiled, which on Drupal 11 aborts the container build.
     return [
-      // Two listeners share this event, so the value is a list of listeners.
-      // A repeated array key would silently drop the first one.
-      CasPreRegisterEvent::class => [
-        ['userPreRegister'],
-        // Priority -50: after oe_authentication's property processing (0) and
-        // before its MessengerEuLoginEventSubscriber::showUserMessage (-100),
-        // which is the only listener below us on this dispatch.
-        ['suppressDuplicateApprovalMessage', -50],
-      ],
+      CasPreRegisterEvent::class => ['userPreRegister'],
       CasPreLoginEvent::class => ['userPreLogin'],
-      CasPreUserLoadEvent::class => ['userPreLoad'],
     ];
-  }
-
-  /**
-   * Stops oe_authentication announcing a pending account a second time.
-   *
-   * Two modules independently tell the user their account awaits approval:
-   * oe_authentication's MessengerEuLoginEventSubscriber, on this event, and
-   * cas's CasAdminApprovalRegistrationSubscriber, on
-   * ExternalAuthEvents::REGISTER. The strings differ — only the CAS one
-   * mentions the confirmation email — so Drupal's duplicate suppression does
-   * not collapse them, and the user reads the same sentence twice.
-   *
-   * We keep the CAS message, which is the fuller and more accurate of the two
-   * (CAS does send that email, via _user_mail_notify), and stop this dispatch
-   * before oe_authentication's listener runs.
-   *
-   * Note this is only safe while showUserMessage is the sole listener below
-   * our priority. If oe_authentication adds another, it would be stopped too;
-   * \Drupal::service('event_dispatcher')->getListeners() lists them.
-   *
-   * @param \Drupal\cas\Event\CasPreRegisterEvent $event
-   *   The CAS pre-register event.
-   */
-  public function suppressDuplicateApprovalMessage(CasPreRegisterEvent $event): void {
-    $event->stopPropagation();
   }
 
   /**
@@ -121,8 +86,9 @@ class CasEventSubscriber implements EventSubscriberInterface {
   public function userPreRegister(CasPreRegisterEvent $event) {
     // Check if user can register without SMED.
     if ($this->configFactory->get('eic_user_login.settings')->get('allow_user_register') === TRUE) {
-      // Without SMED, EU Login users are valid as soon as they register.
-      $event->setPropertyValue('field_user_status', SmedUserStatuses::USER_VALID);
+      // Without SMED, EU Login users start as drafts: they have to apply for
+      // membership before they are valid.
+      $event->setPropertyValue('field_user_status', SmedUserStatuses::USER_DRAFT);
       return;
     }
 
@@ -195,25 +161,6 @@ class CasEventSubscriber implements EventSubscriberInterface {
     }
   }
 
-  /**
-   * React on the pre user load event.
-   *
-   * Due to EIC specificities, we need to use the email address as cas username
-   * instead of the real EU Login ID.
-   * So we modify the returned property directly from after validation.
-   *
-   * @param \Drupal\cas\Event\CasPreUserLoadEvent $event
-   *   Cas per user load event.
-   */
-  public function userPreLoad(CasPreUserLoadEvent $event) {
-    $property_bag = $event->getCasPropertyBag();
-
-    // Store the real username in a new property.
-    $property_bag->setAttribute('_real_username', $property_bag->getUsername());
-
-    // Replace the username with the email address.
-    $property_bag->setUsername($property_bag->getAttribute('email'));
-  }
 
   /**
    * Checks if user account is authorised to login.

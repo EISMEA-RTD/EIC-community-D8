@@ -5,6 +5,7 @@ namespace Drupal\eic_content\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageException;
+use Drupal\ddc_default_content\RestrictedContentPolicy;
 use Drupal\eic_content\TreeWidget\TreeWidgetProperties;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,16 +19,30 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EntityTreeController extends ControllerBase {
 
+  /**
+   * The entity types that the widget lists: terms, members and groups.
+   */
+  const TARGET_ENTITIES = ['taxonomy_term', 'user', 'group'];
+
   /** @var \Drupal\eic_content\Services\EntityTreeManager */
   private $treeManager;
+
+  /**
+   * The policy that tells who may see restricted content.
+   *
+   * @var \Drupal\ddc_default_content\RestrictedContentPolicy
+   */
+  private $restrictedContent;
 
   /**
    * EntityTreeController constructor.
    *
    * @param \Drupal\eic_content\Services\EntityTreeManager $tree_manager
+   * @param \Drupal\ddc_default_content\RestrictedContentPolicy $restricted_content
    */
-  public function __construct($tree_manager) {
+  public function __construct($tree_manager, RestrictedContentPolicy $restricted_content) {
     $this->treeManager = $tree_manager;
+    $this->restrictedContent = $restricted_content;
   }
 
   /**
@@ -37,8 +52,40 @@ class EntityTreeController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('eic_content.entity_tree_manager')
+      $container->get('eic_content.entity_tree_manager'),
+      $container->get('ddc_default_content.restricted_content')
     );
+  }
+
+  /**
+   * Refuses a target that the caller may not have, or that is not known.
+   *
+   * The members of the community, with their e-mail addresses, are restricted
+   * content: only a trusted account gets them. The groups are left to the group
+   * property of the widget, which leaves out the restricted bundles for the
+   * other accounts. The answer does not repeat what the caller sent.
+   *
+   * @param mixed $target_entity
+   *   The entity type that the request asks for.
+   * @param string[] $allowed
+   *   The entity types that the endpoint knows.
+   *
+   * @return \Symfony\Component\HttpFoundation\JsonResponse|null
+   *   The refusal, or NULL when the request may go on.
+   */
+  protected function refuseTarget($target_entity, array $allowed = self::TARGET_ENTITIES): ?JsonResponse {
+    if (!is_string($target_entity) || !in_array($target_entity, $allowed, TRUE)) {
+      return new JsonResponse(['error' => 'invalid_parameter'], Response::HTTP_BAD_REQUEST);
+    }
+
+    if ($target_entity === 'user' && !$this->restrictedContent->isTrusted($this->currentUser())) {
+      return new JsonResponse(
+        ['error' => $this->currentUser()->isAnonymous() ? 'authentication_required' : 'restricted_access_required'],
+        Response::HTTP_FORBIDDEN
+      );
+    }
+
+    return NULL;
   }
 
   /**
@@ -53,6 +100,9 @@ class EntityTreeController extends ControllerBase {
     $length = $request->query->get('length', 25);
     $target_entity = $request->query->get('targetEntity');
     $target_bundle = $request->query->get('targetBundle');
+    if ($refusal = $this->refuseTarget($target_entity)) {
+      return $refusal;
+    }
     // This will check if we need to split result items
     $load_all = (int) $request->query->get('loadAll', 0);
     $ignore_current_user = (int) $request->query->get('ignoreCurrentUser', 0);
@@ -116,6 +166,10 @@ class EntityTreeController extends ControllerBase {
     $level = $request->query->get('level', 0);
     $target_entity = $request->query->get('targetEntity');
     $target_bundle = $request->query->get('targetBundle');
+    // Only the terms of a vocabulary have children.
+    if ($refusal = $this->refuseTarget($target_entity, ['taxonomy_term'])) {
+      return $refusal;
+    }
 
     return new JsonResponse([
       'terms' => $this->treeManager->loadChildrenLevel($target_entity, $target_bundle, $parent, $level),
@@ -133,6 +187,9 @@ class EntityTreeController extends ControllerBase {
     $target_entity = $request->query->get('targetEntity');
     $target_bundle = $request->query->get('targetBundle');
     $disable_top = (bool) $request->query->get('disableTop', FALSE);
+    if ($refusal = $this->refuseTarget($target_entity)) {
+      return $refusal;
+    }
 
     return new JsonResponse(
       $this->treeManager->search($target_entity, $target_bundle, $text, $selected_values, $disable_top)

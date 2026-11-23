@@ -307,10 +307,15 @@ interface SourceTypeInterface {
   public function getRangeFacets(): array;
 
   /**
-   * Determines if the source requires user authentication.
+   * Determines if the source serves restricted content only.
+   *
+   * Such a source is served to trusted accounts only: the ones that hold the
+   * 'view ddc restricted content' permission. Every other source is filtered
+   * per item, as RestrictedContentPolicy says.
    *
    * @return bool
-   *   TRUE if authentication is required, FALSE otherwise.
+   *   TRUE if the source requires restricted access, FALSE otherwise.
    */
-  public function requiresAuthentication(): bool;
+  public function requiresRestrictedAccess(): bool;
+
 }

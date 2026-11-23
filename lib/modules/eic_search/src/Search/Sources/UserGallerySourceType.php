@@ -142,4 +142,13 @@ class UserGallerySourceType extends SourceType {
     return ['itm_user_profile_field_vocab_topic_expertise'];
   }
 
+  /**
+   * {@inheritdoc}
+   *
+   * The member directory is for members.
+   */
+  public function requiresRestrictedAccess(): bool {
+    return TRUE;
+  }
+
 }

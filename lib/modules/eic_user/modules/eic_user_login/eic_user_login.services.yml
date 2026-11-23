@@ -4,7 +4,7 @@ services:
     arguments: [ '@http_client_factory', '@config.factory']
   eic_user_login.smed_user_manager:
     class: Drupal\eic_user_login\Service\SmedUserManager
-    arguments: ['@config.factory', '@datetime.time']
+    arguments: ['@config.factory', '@datetime.time', '@?ddc_membership.texts']
   eic_user_login.cas_event_subscriber:
     class: Drupal\eic_user_login\EventSubscriber\CasEventSubscriber
     arguments: ['@config.factory', '@eic_user_login.smed_user_manager', '@eic_user_login.smed_user_connection']
@@ -13,5 +13,9 @@ services:
   eic_user_login.request_event_subscriber:
     class: Drupal\eic_user_login\EventSubscriber\RequestEventSubscriber
     arguments: ['@tempstore.private', '@current_user', '@?eic_feature_toggle.manager']
+    tags:
+      - { name: event_subscriber }
+  eic_user_login.login_route_subscriber:
+    class: Drupal\eic_user_login\Routing\LoginRouteSubscriber
     tags:
       - { name: event_subscriber }

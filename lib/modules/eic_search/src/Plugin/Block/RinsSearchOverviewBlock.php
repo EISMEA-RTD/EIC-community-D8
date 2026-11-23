@@ -2,11 +2,14 @@
 
 namespace Drupal\eic_search\Plugin\Block;
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Url;
+use Drupal\ddc_default_content\RestrictedContentPolicy;
 use Drupal\eic_search\Search\RiskIndicators;
 use Drupal\eic_search\Search\Sources\ResearchInstitutionSourceType;
 use Drupal\eic_user\UserHelper;
@@ -42,6 +45,8 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
    *   The request stack service.
    * @param \Drupal\Core\Session\AccountProxyInterface $currentUser
    *   The current user service.
+   * @param \Drupal\ddc_default_content\RestrictedContentPolicy $restrictedContent
+   *   The policy that tells who may see restricted content.
    */
   public function __construct(
     array $configuration,
@@ -50,6 +55,7 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
     private readonly ResearchInstitutionSourceType $sourceType,
     private readonly RequestStack $requestStack,
     private readonly AccountProxyInterface $currentUser,
+    private readonly RestrictedContentPolicy $restrictedContent,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
   }
@@ -69,8 +75,22 @@ final class RinsSearchOverviewBlock extends BlockBase implements ContainerFactor
       $plugin_definition,
       $container->get('eic_search.source_type.research_institution'),
       $container->get('request_stack'),
-      $container->get('current_user')
+      $container->get('current_user'),
+      $container->get('ddc_default_content.restricted_content')
     );
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * The research institutions are restricted content: the block renders
+   * nothing for an account that is not trusted, wherever it is placed.
+   */
+  protected function blockAccess(AccountInterface $account) {
+    return ($this->restrictedContent->isTrusted($account)
+      ? AccessResult::allowed()
+      : AccessResult::forbidden('Restricted content.'))
+      ->addCacheContexts(['user.permissions', 'user.roles:anonymous']);
   }
 
   /**

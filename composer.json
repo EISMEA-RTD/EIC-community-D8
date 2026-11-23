@@ -125,6 +125,8 @@
     },
     "require-dev": {
         "drevops/behat-screenshot": "^1.2",
+        "drupal/cas_mock_server": "^2.0.1",
+        "drupal/core-dev": "^11.4",
         "drupal/data_fixtures": "^1.8",
         "drupal/devel": "^5.1",
         "drupal/drupal-extension": "^6.1",

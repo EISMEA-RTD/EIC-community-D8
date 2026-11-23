@@ -9,6 +9,7 @@ default:
         - Drupal\DrupalExtension\Context\MinkContext
         - OpenEuropa\Site\Tests\Behat\DrupalContext
         - OpenEuropa\Site\Tests\Behat\FeatureContext
+        - OpenEuropa\Site\Tests\Behat\OnboardingContext
         - DrevOps\BehatScreenshotExtension\Context\ScreenshotContext
         - rdx\behatvars\BehatVariablesContext
         - Drupal\Tests\oe_media\Behat\MediaContext

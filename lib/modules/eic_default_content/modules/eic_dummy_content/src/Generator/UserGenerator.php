@@ -180,7 +180,6 @@ class UserGenerator extends CoreGenerator {
     $profile = Profile::create([
       'type' => ProfileConst::MEMBER_PROFILE_TYPE_NAME,
       'uid' => $uid,
-      'field_body' => $this->getFormattedText('filtered_html'),
       'field_vocab_topic_expertise' => $this->getRandomEntities('taxonomy_term', ['vid' => Topics::TERM_VOCABULARY_TOPICS_ID], 3),
       'field_vocab_topic_interest' => $this->getRandomEntities('taxonomy_term', ['vid' => Topics::TERM_VOCABULARY_TOPICS_ID], 3),
       'field_vocab_geo' => $this->getRandomEntities('taxonomy_term', ['vid' => 'geo'], 3),

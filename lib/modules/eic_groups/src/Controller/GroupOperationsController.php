@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Provides group operation route controllers.
@@ -135,6 +136,13 @@ class GroupOperationsController extends ControllerBase {
    * @return \Symfony\Component\HttpFoundation\JsonResponse
    */
   public function likeContent(Request $request, GroupInterface $group, string $action, NodeInterface $node) {
+    // The action is a method of the flag service, and the service has methods
+    // that delete every flagging of a flag, of a user or of an entity: nothing
+    // but flag and unflag is called, whatever the route says.
+    if (!in_array($action, ['flag', 'unflag'], TRUE)) {
+      throw new NotFoundHttpException();
+    }
+
     $flag = $this->flagService->getFlagById(FlagType::LIKE_CONTENT);
     $this->flagService->{$action}($flag, $node);
 

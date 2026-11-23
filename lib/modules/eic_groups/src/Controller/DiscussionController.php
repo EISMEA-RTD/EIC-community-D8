@@ -34,6 +34,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Provides route for discussion
@@ -230,26 +231,52 @@ class DiscussionController extends ControllerBase {
    * @throws \Drupal\Core\Entity\EntityMalformedException
    */
   public function fetchComments(Request $request, $discussion_id) {
+    // Only the comments of a discussion that the caller may view are served. A
+    // node that does not exist, a node that is not a discussion, such as a
+    // resource, and a discussion that the caller may not view get the same
+    // answer, so that the endpoint is no way to read or to find out about them.
+    $discussion = $this->entityTypeManager->getStorage('node')->load($discussion_id);
+    if (
+      !$discussion instanceof NodeInterface
+      || $discussion->bundle() !== 'discussion'
+      || !$discussion->access('view')
+    ) {
+      throw new NotFoundHttpException();
+    }
+
     $highlighted_comment = $request->query->get('highlightedComment', 0);
     $page = $request->query->get('page', 1);
     $parent_id = $request->query->get('parentId', 0);
     $total_to_load = $page * self::BATCH_PAGE;
-    $highlighted_comment = Comment::load($highlighted_comment);
+    $highlighted_comment = $highlighted_comment
+      ? $this->entityTypeManager->getStorage('comment')->load($highlighted_comment)
+      : NULL;
+    // The comment to highlight is a published comment of this discussion that
+    // the caller may view, as the comments of the list are.
+    if (
+      $highlighted_comment instanceof CommentInterface
+      && (
+        (string) $highlighted_comment->getCommentedEntityId() !== (string) $discussion_id
+        || !$highlighted_comment->isPublished()
+        || !$highlighted_comment->access('view')
+      )
+    ) {
+      $highlighted_comment = NULL;
+    }
 
     $query = $this->entityTypeManager->getStorage('comment')
       ->getQuery()
       ->accessCheck(TRUE)
       ->condition('pid', $parent_id, $parent_id === 0 ? 'IS NULL' : '=')
       ->condition('status', Node::PUBLISHED)
+      // The replies of a comment are the replies on this discussion, whatever
+      // the parent id says.
+      ->condition('entity_id', $discussion_id)
       ->sort('created', 'DESC')
       ->range(0, $total_to_load);
 
     if ($highlighted_comment) {
       $query->condition('cid', $highlighted_comment->id(), '<>');
-    }
-
-    if (!$parent_id) {
-      $query->condition('entity_id', $discussion_id);
     }
 
     $comments = $query->execute();
@@ -263,7 +290,7 @@ class DiscussionController extends ControllerBase {
       ->count()
       ->execute();
 
-    $comments = Comment::loadMultiple($comments);
+    $comments = $this->entityTypeManager->getStorage('comment')->loadMultiple($comments);
     $comments_data = [];
 
     // Put highlighted comment at the top.
@@ -298,6 +325,13 @@ class DiscussionController extends ControllerBase {
     string $flag,
     string $type
   ): JsonResponse {
+    // The type is a method of the flag service, and the service has methods
+    // that delete every flagging of a flag, of a user or of an entity: nothing
+    // but flag and unflag is called, whatever the route says.
+    if (!in_array($type, ['flag', 'unflag'], TRUE)) {
+      throw new NotFoundHttpException();
+    }
+
     $comment = Comment::load($comment_id);
 
     if (!$comment instanceof CommentInterface) {
@@ -328,7 +362,8 @@ class DiscussionController extends ControllerBase {
       if ('like_comment' === $flag) {
         $flag_entity = $this->flagService->getFlagById('like_comment');
 
-        if (!$flag_entity->actionAccess($type, $this->currentUser(), $comment)) {
+        // The access is a result object: it says no through isAllowed().
+        if (!$flag_entity->actionAccess($type, $this->currentUser(), $comment)->isAllowed()) {
           return new JsonResponse(
             'You do not have access to ' . $type . ' like comment',
             Response::HTTP_FORBIDDEN
@@ -354,7 +389,7 @@ class DiscussionController extends ControllerBase {
           ]
         );
 
-        if (!$flag_entity->actionAccess('flag', $this->currentUser(), $comment)) {
+        if (!$flag_entity->actionAccess('flag', $this->currentUser(), $comment)->isAllowed()) {
           return new JsonResponse(
             'You do not have access to ' . $flag_entity->id(),
             Response::HTTP_FORBIDDEN

@@ -6,6 +6,7 @@
  */
 
 use Drupal\Core\Cache\Cache;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\BubbleableMetadata;
@@ -16,6 +17,7 @@ use Drupal\eic_user\Hooks\UserTokens;
 use Drupal\eic_user\NotificationFrequencies;
 use Drupal\group\Entity\GroupRelationshipInterface;
 use Drupal\user\EntityOwnerInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Implements hook_theme().
@@ -182,6 +184,38 @@ function eic_user_profile_delete(EntityInterface $entity) {
       _eic_user_refresh_user_data([$account]);
     }
   }
+}
+
+/**
+ * Implements hook_user_view_alter().
+ *
+ * Leaves the member profile off the user page when it has nothing to show.
+ * The profile is rendered as an entity, and an empty one still prints its
+ * wrapper elements.
+ */
+function eic_user_user_view_alter(array &$build, UserInterface $account, EntityViewDisplayInterface $display): void {
+  if (empty($build['member_profiles'])) {
+    return;
+  }
+
+  $profile = $account->hasField('member_profiles') ? $account->get('member_profiles')->entity : NULL;
+  if (!$profile) {
+    return;
+  }
+
+  // What the default view mode of the profile would show, by field.
+  $profile_display = \Drupal::service('entity_display.repository')
+    ->getViewDisplay('profile', $profile->bundle(), 'default');
+  foreach (array_keys($profile_display->getComponents()) as $name) {
+    if ($profile->hasField($name) && !$profile->get($name)->isEmpty()) {
+      return;
+    }
+  }
+
+  // Keep the cache tags of the profile, so that the page is rebuilt when the
+  // profile gets its first value.
+  $build['#cache']['tags'] = Cache::mergeTags($build['#cache']['tags'] ?? [], $profile->getCacheTags());
+  unset($build['member_profiles']);
 }
 
 /**

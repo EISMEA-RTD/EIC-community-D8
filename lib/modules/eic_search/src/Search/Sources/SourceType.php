@@ -262,7 +262,7 @@ abstract class SourceType implements SourceTypeInterface {
   /**
    * {@inheritdoc}
    */
-  public function requiresAuthentication(): bool {
+  public function requiresRestrictedAccess(): bool {
     return FALSE;
   }
 

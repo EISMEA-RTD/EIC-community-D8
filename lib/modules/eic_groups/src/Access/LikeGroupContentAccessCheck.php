@@ -55,7 +55,18 @@ class LikeGroupContentAccessCheck implements AccessInterface {
 
     $flag_entity = $this->flagService->getFlagById('like_content');
 
-    return $flag_entity->actionAccess('flag', $account, $node);
+    // The account has to be able to view the group and the node, and the node
+    // has to be content of the group: the flag access alone says nothing about
+    // them, so that a restricted node, or a research institution, would be
+    // acted on, and named by the redirect of the group, through this route.
+    $related = $group->getRelationshipsByEntity($node)
+      ? AccessResult::allowed()
+      : AccessResult::forbidden('The node is not content of the group.');
+
+    return $group->access('view', $account, TRUE)
+      ->andIf($node->access('view', $account, TRUE))
+      ->andIf($related->addCacheableDependency($group)->addCacheableDependency($node)->addCacheTags(['group_relationship_list']))
+      ->andIf($flag_entity->actionAccess('flag', $account, $node));
   }
 
 }
