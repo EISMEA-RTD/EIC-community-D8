@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0826961328becc333db47850735d33e2",
+    "content-hash": "18458ecfe3a20493ff72a0f6a2cc63c2",
     "packages": [
         {
             "name": "amsul/pickadate_js",
@@ -2441,56 +2441,6 @@
             "support": {
                 "source": "https://git.drupalcode.org/project/ckeditor5_premium_features",
                 "issues": "https://www.drupal.org/project/issues/ckeditor5_premium_features"
-            }
-        },
-        {
-            "name": "drupal/ckeditor_taxonomy_glossary",
-            "version": "1.0.1",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/ckeditor_taxonomy_glossary.git",
-                "reference": "1.0.1"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/ckeditor_taxonomy_glossary-1.0.1.zip",
-                "reference": "1.0.1",
-                "shasum": "e5d4139946a7e0646815afb83665ec103e6025ea"
-            },
-            "require": {
-                "drupal/core": "^10.1 || ^11 || ^12"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "1.0.1",
-                    "datestamp": "1782113732",
-                    "security-coverage": {
-                        "status": "covered",
-                        "message": "Covered by Drupal's security advisory policy"
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "doxigo",
-                    "homepage": "https://www.drupal.org/user/1331334"
-                }
-            ],
-            "description": "Provides glossary functionality with CKEditor 5 integration and tooltips.",
-            "homepage": "https://www.drupal.org/project/ckeditor_taxonomy_glossary",
-            "keywords": [
-                "CKEditor",
-                "Drupal",
-                "Glossary",
-                "Tooltip"
-            ],
-            "support": {
-                "source": "https://git.drupalcode.org/project/ckeditor_taxonomy_glossary"
             }
         },
         {
